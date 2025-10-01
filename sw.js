@@ -59,7 +59,7 @@ self.addEventListener("fetch", event => {
 /*self.addEventListener('sync',event=>{});
 self.addEventListener('push',event=>{});*/
 
-const APP_SHELL = "appShell_v1.0";
+/*const APP_SHELL = "appShell_v1.0";
 const DYNAMIC_CACHE = "dynamic_v1.0";
 
 // Archivos del App Shell (fijos)
@@ -70,4 +70,4 @@ const APP_SHELL_FILES = [
   "/src/index.css",
   "/src/App.css",
   "/src/App.jsx"
-];
+];*/
