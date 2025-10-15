@@ -1,6 +1,6 @@
 // sw.js - Versión mejorada con mejor manejo de cache
-const APP_SHELL = "appShell_v1.1"; // Cambiado a v1.1
-const DYNAMIC_CACHE = "dynamic_v1.1"; // Cambiado a v1.1
+const APP_SHELL = "appShell_v1.2"; // Actualizado a v1.2
+const DYNAMIC_CACHE = "dynamic_v1.2"; // Actualizado a v1.2
 
 // Archivos del App Shell
 const APP_SHELL_FILES = [
@@ -11,9 +11,14 @@ const APP_SHELL_FILES = [
   "/src/App.css",
   "/src/App.jsx",
   "/src/main.jsx",
-  "/src/Login.jsx",
+  "/src/login.jsx",
   "/src/idb.js",
-  "/src/styles/login.css"
+  "/src/styles/login.css",
+  "/public/icons/ico1.ico",
+  "/public/icons/ico2.ico",
+  "/public/icons/ico3.ico",
+  "/public/icons/ico4.ico",
+  "/public/icons/ico5.ico"
 ];
 
 self.addEventListener('install', event => {
@@ -26,7 +31,8 @@ self.addEventListener('install', event => {
       })
       .then(() => {
         console.log('Todos los archivos cacheados');
-        return self.skipWaiting(); // Fuerza activación inmediata
+        // NO forzar activación inmediata - esperar a que el usuario cierre las pestañas
+        console.log('Service Worker instalado, esperando activación...');
       })
       .catch(error => {
         console.error('Error en install:', error);
@@ -48,11 +54,19 @@ self.addEventListener("activate", event => {
             }
           })
         );
-      }),
-      // Tomar control inmediato de todas las pestañas
-      self.clients.claim()
+      })
+      // NO usar self.clients.claim() para evitar tomar control inmediato
     ]).then(() => {
       console.log('Service Worker activado y listo');
+      // Notificar a las pestañas que hay una nueva versión disponible
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            message: 'Nueva versión disponible. Recarga la página para ver los cambios.'
+          });
+        });
+      });
     })
   );
 });
@@ -193,9 +207,137 @@ self.addEventListener('sync', async (event) => {
   }
 });
 
-// Escuchar mensajes desde la app para forzar actualización
+// Configuración para notificaciones push
+const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
+
+// Manejar notificaciones push
+self.addEventListener('push', event => {
+  console.log('Push event recibido:', event);
+  
+  let notificationData = {
+    title: 'Nueva notificación',
+    body: 'Tienes un nuevo mensaje',
+    icon: '/icons/ico1.ico',
+    badge: '/icons/ico2.ico',
+    tag: 'default-notification',
+    requireInteraction: true,
+    actions: [
+      {
+        action: 'open',
+        title: 'Abrir',
+        icon: '/icons/ico3.ico'
+      },
+      {
+        action: 'close',
+        title: 'Cerrar',
+        icon: '/icons/ico4.ico'
+      }
+    ],
+    data: {
+      url: '/',
+      timestamp: Date.now()
+    }
+  };
+
+  // Si hay datos en el evento push, usarlos
+  if (event.data) {
+    try {
+      const pushData = event.data.json();
+      notificationData = { ...notificationData, ...pushData };
+    } catch (e) {
+      console.error('Error al parsear datos push:', e);
+      notificationData.body = event.data.text();
+    }
+  }
+
+  const promiseChain = self.registration.showNotification(
+    notificationData.title,
+    notificationData
+  );
+
+  event.waitUntil(promiseChain);
+});
+
+// Manejar clics en notificaciones
+self.addEventListener('notificationclick', event => {
+  console.log('Notificación clickeada:', event);
+  
+  event.notification.close();
+
+  if (event.action === 'open') {
+    // Abrir o enfocar la aplicación
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then(clientList => {
+        // Si ya hay una ventana abierta, enfocarla
+        for (const client of clientList) {
+          if (client.url === event.notification.data.url && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // Si no hay ventana abierta, abrir una nueva
+        if (clients.openWindow) {
+          return clients.openWindow(event.notification.data.url || '/');
+        }
+      })
+    );
+  } else if (event.action === 'close') {
+    // Solo cerrar la notificación (ya se cerró arriba)
+    console.log('Notificación cerrada');
+  } else {
+    // Click en la notificación misma (no en acción)
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then(clientList => {
+        if (clientList.length > 0) {
+          return clientList[0].focus();
+        }
+        if (clients.openWindow) {
+          return clients.openWindow('/');
+        }
+      })
+    );
+  }
+});
+
+// Manejar cierre de notificaciones
+self.addEventListener('notificationclose', event => {
+  console.log('Notificación cerrada:', event);
+  // Aquí puedes enviar analytics sobre notificaciones cerradas
+});
+
+// Escuchar mensajes desde la app
 self.addEventListener('message', event => {
+  // Manejar actualización manual del Service Worker
   if (event.data === 'skipWaiting') {
+    console.log('Forzando activación del Service Worker...');
     self.skipWaiting();
+  }
+  
+  // Manejar actualización con recarga automática
+  if (event.data === 'updateAndReload') {
+    console.log('Actualizando Service Worker y recargando página...');
+    self.skipWaiting().then(() => {
+      // Notificar a todas las pestañas para que se recarguen
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'RELOAD_PAGE' });
+        });
+      });
+    });
+  }
+  
+  // Manejar mensajes para mostrar notificaciones manuales
+  if (event.data && event.data.type === 'show-notification') {
+    const options = {
+      body: event.data.body || 'Mensaje de prueba',
+      icon: event.data.icon || '/icons/ico1.ico',
+      badge: '/icons/ico2.ico',
+      tag: event.data.tag || 'manual-notification',
+      requireInteraction: true,
+      data: {
+        url: event.data.url || '/',
+        timestamp: Date.now()
+      }
+    };
+    self.registration.showNotification(event.data.title || 'Notificación', options);
   }
 });

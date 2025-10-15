@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./styles/login.css";
 import Login from "./Login"; // Importa el componente Login separado
+import Dashboard from "./components/Dashboard"; // Importa el nuevo Dashboard
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -23,13 +24,7 @@ const App = () => {
   }
 
   // Si está logueado, mostrar el dashboard
-  return (
-    <div className="dashboard-container">
-      <h1>Bienvenido, {usuario}</h1>
-      <p>Has iniciado sesión correctamente</p>
-      <button onClick={handleLogout}>Cerrar sesión</button>
-    </div>
-  );
+  return <Dashboard usuario={usuario} onLogout={handleLogout} />;
 };
 
 export default App;
