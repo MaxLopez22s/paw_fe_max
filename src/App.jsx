@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./styles/login.css";
-import Login from "./Login.jsx"; // Importa el componente Login separado
+import Login from "./login.jsx"; // Importa el componente Login separado
 import Dashboard from "./components/Dashboard"; // Importa el nuevo Dashboard
 
 const App = () => {
