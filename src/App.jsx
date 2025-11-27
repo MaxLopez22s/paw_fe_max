@@ -38,7 +38,7 @@ const App = () => {
       
       // Si no hay userId pero hay usuario, intentar obtenerlo del servidor
       if (!savedUserId && savedUsuario) {
-        fetch(`/api/auth/user-by-telefono/${savedUsuario}`)
+        fetch(`${API_URL}/api/auth/user-by-telefono/${savedUsuario}`)
           .then(res => {
             if (res.ok) {
               return res.json();
