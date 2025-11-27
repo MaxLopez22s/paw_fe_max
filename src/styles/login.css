@@ -1,0 +1,115 @@
+/* login.css completo */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(160deg, #007bff, #00c4cc);
+  color: white;
+  font-family: "Poppins", sans-serif;
+}
+
+.login-title {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  font-weight: bold;
+}
+
+.login-form {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+}
+
+.login-form input {
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: none;
+  border-radius: 6px;
+  outline: none;
+  font-size: 1rem;
+}
+
+.login-form button {
+  background: white;
+  color: #007bff;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s ease;
+}
+
+.login-form button:hover {
+  background: #e8f0fe;
+}
+
+.login-error {
+  color: #ffcccc;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.login-error.success {
+  color: #90ee90;
+}
+
+.toggle-form-btn {
+  background: transparent !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.toggle-form-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  transform: none !important;
+}
+
+/* Dashboard styles */
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(160deg, #007bff, #00c4cc);
+  color: white;
+  font-family: "Poppins", sans-serif;
+  text-align: center;
+}
+
+.dashboard-container h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-container p {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.dashboard-container button {
+  background: white;
+  color: #007bff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
+  transition: 0.2s ease;
+}
+
+.dashboard-container button:hover {
+  background: #e8f0fe;
+  transform: translateY(-2px);
+}
