@@ -104,3 +104,5 @@ Verifica que:
 - No haya errores en la consola del navegador
 - El service worker esté actualizado (versión v1.4)
 
+
+
