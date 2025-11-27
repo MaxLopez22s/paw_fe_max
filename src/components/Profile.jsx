@@ -47,18 +47,20 @@ const Profile = ({ usuario }) => {
       // Guardar en localStorage
       localStorage.setItem('userProfile', JSON.stringify(profile));
       
-      // Enviar al servidor (simulado)
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile)
-      });
+      // TODO: Implementar endpoint para guardar perfil
+      // Por ahora solo guardamos en localStorage
+      // const response = await fetch('/api/auth/profile', {
+      //   method: 'PUT',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(profile)
+      // });
 
-      setSaveMessage('✅ Perfil guardado exitosamente');
+      setSaveMessage('✅ Perfil guardado exitosamente (solo local)');
       setIsEditing(false);
       
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (error) {
+      console.error('Error al guardar perfil:', error);
       setSaveMessage('❌ Error al guardar perfil');
       setTimeout(() => setSaveMessage(''), 3000);
     }
