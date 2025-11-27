@@ -188,3 +188,5 @@ Para problemas o preguntas:
 2. Verificar Service Worker en DevTools
 3. Comprobar conectividad con backend
 4. Validar permisos de notificaciones
+
+

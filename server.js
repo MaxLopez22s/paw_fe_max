@@ -17,8 +17,8 @@ app.use(express.static('dist')); // Para servir la PWA construida
 
 // Configuración VAPID
 const vapidKeys = {
-  publicKey: 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA',
-  privateKey: 'NB_Sw6_NpRLOcmnqJD4gG404xsPdilVThhz6dCPFADI'
+  publicKey: 'BNF7IksZuJmIQTntbVFM02H9fbpsC1QheZNbfI9BuwjPceHSJfkWA5gSHTRvKodt_-mCBMNxB86EEOk9dq1suDY',
+  privateKey: 'L44EgisdK4-vVcXpaUsGwyI915GXsOULSXET4826d_8'
 };
 
 // Configurar web-push con las claves VAPID

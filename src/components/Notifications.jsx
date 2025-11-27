@@ -7,7 +7,7 @@ const Notifications = ({ usuario }) => {
   const [customNotification, setCustomNotification] = useState({
     title: '',
     body: '',
-    icon: '/public/icons/ico1.ico'
+    icon: '/icons/ico1.ico'
   });
 
   useEffect(() => {
@@ -131,20 +131,24 @@ const Notifications = ({ usuario }) => {
 
   const sendTestNotification = async () => {
     try {
-      const response = await fetch('/api/test-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      const result = await response.json();
+      // Mostrar notificación local de prueba
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification('🧪 Notificación de Prueba', {
+          body: 'Esta es una notificación de prueba local',
+          icon: '/icons/ico1.ico',
+          badge: '/icons/ico2.ico',
+          tag: 'test-notification'
+        });
+      }
       
       saveNotificationToHistory({
         title: '🧪 Notificación de Prueba',
-        body: 'Esta es una notificación de prueba enviada desde el servidor',
+        body: 'Esta es una notificación de prueba enviada localmente',
         type: 'test'
       });
 
-      alert(`✅ Notificación enviada: ${result.successful}/${result.total} exitosas`);
+      alert('✅ Notificación de prueba mostrada');
     } catch (error) {
       console.error('Error al enviar notificación:', error);
       alert('❌ Error al enviar notificación');
@@ -158,26 +162,29 @@ const Notifications = ({ usuario }) => {
     }
 
     try {
-      const response = await fetch('/api/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(customNotification)
-      });
-      
-      const result = await response.json();
+      // Mostrar notificación local
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification(customNotification.title, {
+          body: customNotification.body,
+          icon: customNotification.icon || '/icons/ico1.ico',
+          badge: '/icons/ico2.ico',
+          tag: 'custom-notification'
+        });
+      }
       
       saveNotificationToHistory({
         ...customNotification,
         type: 'custom'
       });
 
-      alert(`✅ Notificación enviada a ${result.sentTo} dispositivos`);
+      alert('✅ Notificación personalizada mostrada');
       
       // Limpiar formulario
       setCustomNotification({
         title: '',
         body: '',
-        icon: '/public/icons/ico1.ico'
+        icon: '/icons/ico1.ico'
       });
     } catch (error) {
       console.error('Error al enviar notificación:', error);

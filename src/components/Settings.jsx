@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  subscribeToNotificationType, 
+  unsubscribeFromNotificationType, 
+  getActiveSubscriptions,
+  NOTIFICATION_TYPES,
+  NOTIFICATION_CONFIGS,
+  requestNotificationPermission
+} from '../utils/pushNotifications';
 
 const Settings = ({ usuario }) => {
   const [settings, setSettings] = useState({
@@ -31,6 +39,8 @@ const Settings = ({ usuario }) => {
   });
 
   const [saveStatus, setSaveStatus] = useState('');
+  const [activeSubscriptions, setActiveSubscriptions] = useState([]);
+  const [loadingSubs, setLoadingSubs] = useState(false);
 
   useEffect(() => {
     // Cargar configuración guardada
@@ -38,7 +48,59 @@ const Settings = ({ usuario }) => {
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings));
     }
+    
+    // Cargar suscripciones activas
+    loadSubscriptions();
   }, []);
+
+  const loadSubscriptions = async () => {
+    try {
+      const subs = await getActiveSubscriptions();
+      setActiveSubscriptions(subs);
+    } catch (error) {
+      console.error('Error cargando suscripciones:', error);
+    }
+  };
+
+  const handleSubscribe = async (type) => {
+    setLoadingSubs(true);
+    try {
+      const hasPermission = await requestNotificationPermission();
+      if (!hasPermission) {
+        alert('Se necesitan permisos de notificación para suscribirse');
+        setLoadingSubs(false);
+        return;
+      }
+
+      const config = NOTIFICATION_CONFIGS[type] || NOTIFICATION_CONFIGS[NOTIFICATION_TYPES.DEFAULT];
+      await subscribeToNotificationType(type, config);
+      await loadSubscriptions();
+      setSaveStatus(`✅ Suscrito a ${type}`);
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch (error) {
+      console.error('Error suscribiéndose:', error);
+      setSaveStatus(`❌ Error al suscribirse a ${type}`);
+      setTimeout(() => setSaveStatus(''), 3000);
+    } finally {
+      setLoadingSubs(false);
+    }
+  };
+
+  const handleUnsubscribe = async (type) => {
+    setLoadingSubs(true);
+    try {
+      await unsubscribeFromNotificationType(type);
+      await loadSubscriptions();
+      setSaveStatus(`✅ Desuscrito de ${type}`);
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch (error) {
+      console.error('Error desuscribiéndose:', error);
+      setSaveStatus(`❌ Error al desuscribirse de ${type}`);
+      setTimeout(() => setSaveStatus(''), 3000);
+    } finally {
+      setLoadingSubs(false);
+    }
+  };
 
   const handleSettingChange = (category, key, value) => {
     setSettings(prev => ({
@@ -67,16 +129,18 @@ const Settings = ({ usuario }) => {
     try {
       localStorage.setItem('appSettings', JSON.stringify(settings));
       
-      // Simular envío al servidor
-      const response = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario, settings })
-      });
+      // TODO: Implementar endpoint para guardar configuración
+      // Por ahora solo guardamos en localStorage
+      // const response = await fetch('/api/settings', {
+      //   method: 'PUT',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ usuario, settings })
+      // });
 
-      setSaveStatus('✅ Configuración guardada exitosamente');
+      setSaveStatus('✅ Configuración guardada exitosamente (solo local)');
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (error) {
+      console.error('Error al guardar configuración:', error);
       setSaveStatus('❌ Error al guardar configuración');
       setTimeout(() => setSaveStatus(''), 3000);
     }
@@ -292,6 +356,74 @@ const Settings = ({ usuario }) => {
               </div>
             </div>
           )}
+
+          {/* Suscripciones personalizadas */}
+          <div className="setting-item" style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #ddd' }}>
+            <h4 style={{ marginBottom: '1rem' }}>🔔 Suscripciones Personalizadas</h4>
+            <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
+              Suscríbete a diferentes tipos de notificaciones con configuraciones personalizadas
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {Object.entries(NOTIFICATION_TYPES).map(([key, type]) => {
+                const isSubscribed = activeSubscriptions.some(sub => sub.type === type);
+                const config = NOTIFICATION_CONFIGS[type];
+                
+                return (
+                  <div 
+                    key={type} 
+                    style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      padding: '0.75rem',
+                      background: isSubscribed ? '#e8f5e9' : '#f5f5f5',
+                      borderRadius: '8px',
+                      border: isSubscribed ? '2px solid #4caf50' : '1px solid #ddd'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: '600' }}>{config.title}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                        Tipo: {type} {isSubscribed && '✓'}
+                      </div>
+                    </div>
+                    {isSubscribed ? (
+                      <button
+                        onClick={() => handleUnsubscribe(type)}
+                        disabled={loadingSubs}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#f44336',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: loadingSubs ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        Desuscribirse
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSubscribe(type)}
+                        disabled={loadingSubs}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#4caf50',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: loadingSubs ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        Suscribirse
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Privacy Settings */}

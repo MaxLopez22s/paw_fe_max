@@ -3,21 +3,35 @@ import Profile from './Profile';
 import Notifications from './Notifications';
 import Settings from './Settings';
 import Home from './Home';
+import AdminNotifications from './AdminNotifications';
+import AdminUsers from './AdminUsers';
 import './Dashboard.css';
 import './Home.css';
 import './Profile.css';
 import './Notifications.css';
 import './Settings.css';
+import './AdminNotifications.css';
+import './AdminUsers.css';
 
-const Dashboard = ({ usuario, onLogout }) => {
+const Dashboard = ({ usuario, isAdmin, onLogout }) => {
   const [activeTab, setActiveTab] = useState('home');
+
+  // Debug: verificar estado de admin
+  console.log('Dashboard - usuario:', usuario, 'isAdmin:', isAdmin);
+  console.log('Dashboard - localStorage isAdmin:', localStorage.getItem('isAdmin'));
 
   const tabs = [
     { id: 'home', label: '🏠 Inicio', component: Home },
     { id: 'profile', label: '👤 Perfil', component: Profile },
     { id: 'notifications', label: '🔔 Notificaciones', component: Notifications },
-    { id: 'settings', label: '⚙️ Configuración', component: Settings }
+    { id: 'settings', label: '⚙️ Configuración', component: Settings },
+    ...(isAdmin ? [
+      { id: 'admin', label: '👨‍💼 Admin', component: AdminNotifications },
+      { id: 'admin-users', label: '👥 Usuarios', component: AdminUsers }
+    ] : [])
   ];
+
+  console.log('Dashboard - tabs:', tabs.map(t => t.label));
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || Home;
 
@@ -51,7 +65,7 @@ const Dashboard = ({ usuario, onLogout }) => {
 
       {/* Main Content */}
       <main className="dashboard-main">
-        <ActiveComponent usuario={usuario} />
+        <ActiveComponent usuario={usuario} isAdmin={isAdmin} />
       </main>
     </div>
   );

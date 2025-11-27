@@ -39,20 +39,9 @@ const Home = ({ usuario }) => {
   ]);
 
   useEffect(() => {
-    // Simular carga de estadísticas
-    const loadStats = async () => {
-      try {
-        const response = await fetch('/api/stats');
-        if (response.ok) {
-          const data = await response.json();
-          setStats(prev => ({ ...prev, ...data }));
-        }
-      } catch (error) {
-        console.log('Usando estadísticas por defecto');
-      }
-    };
-    
-    loadStats();
+    // Cargar estadísticas (la ruta no existe aún, usar valores por defecto)
+    // TODO: Implementar endpoint /api/stats en el backend
+    console.log('Usando estadísticas por defecto');
   }, []);
 
   const handleQuickAction = async (action) => {

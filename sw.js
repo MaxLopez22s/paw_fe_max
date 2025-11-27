@@ -1,6 +1,7 @@
-// sw.js - Versión mejorada con mejor manejo de cache
-const APP_SHELL = "appShell_v1.2"; // Actualizado a v1.2
-const DYNAMIC_CACHE = "dynamic_v1.2"; // Actualizado a v1.2
+// sw.js - Versión mejorada con mejor manejo de cache, offline y notificaciones personalizadas
+const APP_SHELL = "appShell_v1.6"; // Actualizado a v1.6 (Registro y gestión de usuarios)
+const DYNAMIC_CACHE = "dynamic_v1.6"; // Actualizado a v1.6
+const API_CACHE = "apiCache_v1.6"; // Cache específico para API
 
 // Archivos del App Shell
 const APP_SHELL_FILES = [
@@ -14,11 +15,13 @@ const APP_SHELL_FILES = [
   "/src/login.jsx",
   "/src/idb.js",
   "/src/styles/login.css",
-  "/public/icons/ico1.ico",
-  "/public/icons/ico2.ico",
-  "/public/icons/ico3.ico",
-  "/public/icons/ico4.ico",
-  "/public/icons/ico5.ico"
+  "/src/components/AdminUsers.jsx",
+  "/src/components/AdminUsers.css",
+  "/icons/ico1.ico",
+  "/icons/ico2.ico",
+  "/icons/ico3.ico",
+  "/icons/ico4.ico",
+  "/icons/ico5.ico"
 ];
 
 self.addEventListener('install', event => {
@@ -48,7 +51,7 @@ self.addEventListener("activate", event => {
       caches.keys().then(keys => {
         return Promise.all(
           keys.map(key => {
-            if (key !== APP_SHELL && key !== DYNAMIC_CACHE) {
+            if (key !== APP_SHELL && key !== DYNAMIC_CACHE && key !== API_CACHE) {
               console.log('Eliminando cache vieja:', key);
               return caches.delete(key);
             }
@@ -75,17 +78,64 @@ self.addEventListener("fetch", event => {
   // Solo cachear GET requests
   if (event.request.method !== "GET") return;
 
-  // Para requests de la API, siempre ir a la red primero
+  // Para requests de la API, usar estrategia Network First con fallback a cache
   if (event.request.url.includes('/api/')) {
     event.respondWith(
-      fetch(event.request)
-        .then(networkResponse => {
+      (async () => {
+        try {
+          // Intentar red primero
+          const networkResponse = await fetch(event.request);
+          
+          // Si la respuesta es válida, cachearla
+          if (networkResponse && networkResponse.status === 200) {
+            const clonedResponse = networkResponse.clone();
+            const cache = await caches.open(API_CACHE);
+            cache.put(event.request, clonedResponse);
+            
+            // También guardar en IndexedDB para acceso rápido
+            try {
+              const data = await clonedResponse.json();
+              await saveApiResponseToDB(event.request.url, data);
+            } catch (e) {
+              // Si no es JSON, no importa
+            }
+          }
+          
           return networkResponse;
-        })
-        .catch(error => {
-          console.log('Error en API request:', error);
-          throw error;
-        })
+        } catch (error) {
+          console.log('Error en API request, intentando cache:', error);
+          
+          // Intentar desde cache
+          const cachedResponse = await caches.match(event.request);
+          if (cachedResponse) {
+            console.log('Sirviendo API desde cache:', event.request.url);
+            return cachedResponse;
+          }
+          
+          // Intentar desde IndexedDB
+          try {
+            const dbData = await getApiResponseFromDB(event.request.url);
+            if (dbData) {
+              console.log('Sirviendo API desde IndexedDB:', event.request.url);
+              return new Response(JSON.stringify(dbData), {
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+          } catch (dbError) {
+            console.error('Error accediendo IndexedDB:', dbError);
+          }
+          
+          // Si todo falla, devolver error offline
+          return new Response(JSON.stringify({ 
+            error: 'Offline', 
+            message: 'No hay conexión y no hay datos en cache' 
+          }), {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      })()
     );
     return;
   }
@@ -130,18 +180,90 @@ self.addEventListener("fetch", event => {
 // Función para abrir IndexedDB en el Service Worker
 const openDB = () => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('pwa-posts', 1);
+    const request = indexedDB.open('pwa-database', 2);
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
+      
+      // Store para datos pendientes
       if (!db.objectStoreNames.contains('pending')) {
-        db.createObjectStore('pending', { keyPath: 'id', autoIncrement: true });
+        const store = db.createObjectStore('pending', { 
+          keyPath: 'id', 
+          autoIncrement: true 
+        });
+        store.createIndex('timestamp', 'timestamp', { unique: false });
+        store.createIndex('endpoint', 'endpoint', { unique: false });
+      }
+      
+      // Store para cache de API
+      if (!db.objectStoreNames.contains('apiCache')) {
+        const cacheStore = db.createObjectStore('apiCache', { 
+          keyPath: 'url' 
+        });
+        cacheStore.createIndex('timestamp', 'timestamp', { unique: false });
+        cacheStore.createIndex('endpoint', 'endpoint', { unique: false });
+      }
+      
+      // Store para suscripciones
+      if (!db.objectStoreNames.contains('subscriptions')) {
+        const subStore = db.createObjectStore('subscriptions', { 
+          keyPath: 'id',
+          autoIncrement: true
+        });
+        subStore.createIndex('type', 'type', { unique: false });
+        subStore.createIndex('endpoint', 'endpoint', { unique: true });
+        subStore.createIndex('active', 'active', { unique: false });
       }
     };
 
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+};
+
+// Funciones helper para cache de API en IndexedDB
+const saveApiResponseToDB = async (url, data) => {
+  try {
+    const db = await openDB();
+    const tx = db.transaction('apiCache', 'readwrite');
+    const store = tx.objectStore('apiCache');
+    await new Promise((resolve, reject) => {
+      const request = store.put({
+        url,
+        data,
+        endpoint: url.split('/api/')[1] || url,
+        timestamp: Date.now()
+      });
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error('Error guardando en IndexedDB:', error);
+  }
+};
+
+const getApiResponseFromDB = async (url) => {
+  try {
+    const db = await openDB();
+    const tx = db.transaction('apiCache', 'readonly');
+    const store = tx.objectStore('apiCache');
+    return new Promise((resolve, reject) => {
+      const request = store.get(url);
+      request.onsuccess = () => {
+        const result = request.result;
+        // Cache válido por 5 minutos
+        if (result && Date.now() - result.timestamp < 5 * 60 * 1000) {
+          resolve(result.data);
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error('Error leyendo de IndexedDB:', error);
+    return null;
+  }
 };
 
 // Función helper para obtener todos los registros pendientes
@@ -210,52 +332,100 @@ self.addEventListener('sync', async (event) => {
 // Configuración para notificaciones push
 const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
 
-// Manejar notificaciones push
+// Manejar notificaciones push personalizadas
 self.addEventListener('push', event => {
   console.log('Push event recibido:', event);
   
-  let notificationData = {
-    title: 'Nueva notificación',
-    body: 'Tienes un nuevo mensaje',
-    icon: '/icons/ico1.ico',
-    badge: '/icons/ico2.ico',
-    tag: 'default-notification',
-    requireInteraction: true,
-    actions: [
-      {
-        action: 'open',
-        title: 'Abrir',
-        icon: '/icons/ico3.ico'
-      },
-      {
-        action: 'close',
-        title: 'Cerrar',
-        icon: '/icons/ico4.ico'
+  event.waitUntil(
+    (async () => {
+      let notificationData = {
+        title: 'Nueva notificación',
+        body: 'Tienes un nuevo mensaje',
+        icon: '/icons/ico1.ico',
+        badge: '/icons/ico2.ico',
+        tag: 'default-notification',
+        requireInteraction: true,
+        actions: [
+          {
+            action: 'open',
+            title: 'Abrir',
+            icon: '/icons/ico3.ico'
+          },
+          {
+            action: 'close',
+            title: 'Cerrar',
+            icon: '/icons/ico4.ico'
+          }
+        ],
+        data: {
+          url: '/',
+          timestamp: Date.now(),
+          subscriptionType: 'default'
+        }
+      };
+
+      // Si hay datos en el evento push, usarlos
+      if (event.data) {
+        try {
+          const pushData = event.data.json();
+          
+          // Determinar el tipo de suscripción desde los datos
+          const subscriptionType = pushData.subscriptionType || pushData.type || 'default';
+          
+          // Obtener configuración personalizada de la suscripción desde IndexedDB
+          try {
+            const db = await openDB();
+            const tx = db.transaction('subscriptions', 'readonly');
+            const store = tx.objectStore('subscriptions');
+            const index = store.index('type');
+            
+            const subscriptionRequest = index.getAll(subscriptionType);
+            const subscriptions = await new Promise((resolve, reject) => {
+              subscriptionRequest.onsuccess = () => resolve(subscriptionRequest.result.filter(s => s.active));
+              subscriptionRequest.onerror = () => reject(subscriptionRequest.error);
+            });
+            
+            // Si hay suscripciones activas de este tipo, usar su configuración
+            if (subscriptions.length > 0) {
+              const subConfig = subscriptions[0].config;
+              notificationData = {
+                ...notificationData,
+                title: pushData.title || subConfig.title || notificationData.title,
+                body: pushData.body || notificationData.body,
+                icon: pushData.icon || subConfig.icon || notificationData.icon,
+                badge: pushData.badge || subConfig.badge || notificationData.badge,
+                requireInteraction: pushData.requireInteraction !== undefined 
+                  ? pushData.requireInteraction 
+                  : subConfig.requireInteraction || notificationData.requireInteraction,
+                vibrate: pushData.vibrate || subConfig.vibrate || notificationData.vibrate,
+                tag: pushData.tag || subscriptionType,
+                data: {
+                  ...notificationData.data,
+                  ...pushData.data,
+                  subscriptionType
+                }
+              };
+            } else {
+              // Usar datos del push directamente
+              notificationData = { ...notificationData, ...pushData };
+            }
+          } catch (dbError) {
+            console.error('Error accediendo suscripciones:', dbError);
+            // Fallback a datos del push
+            notificationData = { ...notificationData, ...pushData };
+          }
+        } catch (e) {
+          console.error('Error al parsear datos push:', e);
+          notificationData.body = event.data.text();
+        }
       }
-    ],
-    data: {
-      url: '/',
-      timestamp: Date.now()
-    }
-  };
 
-  // Si hay datos en el evento push, usarlos
-  if (event.data) {
-    try {
-      const pushData = event.data.json();
-      notificationData = { ...notificationData, ...pushData };
-    } catch (e) {
-      console.error('Error al parsear datos push:', e);
-      notificationData.body = event.data.text();
-    }
-  }
-
-  const promiseChain = self.registration.showNotification(
-    notificationData.title,
-    notificationData
+      await self.registration.showNotification(
+        notificationData.title,
+        notificationData
+      );
+    })()
   );
-
-  event.waitUntil(promiseChain);
 });
 
 // Manejar clics en notificaciones

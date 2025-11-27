@@ -22,9 +22,19 @@ const urlBase64ToUint8Array = (base64String) => {
   return outputArray;
 };
 
-// Función para suscribirse a notificaciones push
-const subscribeToPush = async (registration) => {
+// Importar funciones de IndexedDB
+import { saveSubscription, getSubscriptions } from './idb';
+
+// Función para suscribirse a notificaciones push con tipo personalizado
+const subscribeToPush = async (registration, type = 'default', config = {}) => {
   try {
+    // Verificar si ya existe una suscripción activa de este tipo
+    const existingSubs = await getSubscriptions(type, true);
+    if (existingSubs.length > 0) {
+      console.log(`Ya existe una suscripción activa de tipo: ${type}`);
+      return existingSubs[0];
+    }
+    
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
@@ -32,8 +42,11 @@ const subscribeToPush = async (registration) => {
 
     console.log('Suscripción push exitosa:', subscription.toJSON());
     
-    // Enviar la suscripción al servidor
-    await sendSubscriptionToServer(subscription);
+    // Guardar en IndexedDB con tipo y configuración
+    await saveSubscription(subscription, type, config);
+    
+    // Enviar la suscripción al servidor con información del tipo
+    await sendSubscriptionToServer(subscription, type, config);
     
     return subscription;
   } catch (error) {
@@ -42,15 +55,19 @@ const subscribeToPush = async (registration) => {
   }
 };
 
-// Función para enviar la suscripción al servidor
-const sendSubscriptionToServer = async (subscription) => {
+// Función para enviar la suscripción al servidor con tipo y configuración
+const sendSubscriptionToServer = async (subscription, type = 'default', config = {}) => {
   try {
     const response = await fetch('/api/subscribe', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(subscription.toJSON())
+      body: JSON.stringify({
+        subscription: subscription.toJSON ? subscription.toJSON() : subscription,
+        type,
+        config
+      })
     });
 
     if (!response.ok) {
@@ -95,7 +112,21 @@ if ('serviceWorker' in navigator) {
       
       if (hasPermission && 'pushManager' in registration) {
         try {
-          await subscribeToPush(registration);
+          // Verificar si ya existe una suscripción activa
+          const { getSubscriptions } = await import('./idb');
+          const existingSubs = await getSubscriptions('default', true);
+          
+          // Solo suscribirse si no hay suscripciones activas
+          if (existingSubs.length === 0) {
+            // Suscribirse con tipo por defecto
+            await subscribeToPush(registration, 'default', {
+              title: 'Notificación General',
+              icon: '/icons/ico1.ico',
+              badge: '/icons/ico2.ico'
+            });
+          } else {
+            console.log('Ya existe una suscripción activa, omitiendo suscripción por defecto');
+          }
         } catch (error) {
           console.error('Error en suscripción push:', error);
         }
