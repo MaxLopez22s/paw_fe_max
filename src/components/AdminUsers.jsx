@@ -24,6 +24,21 @@ const AdminUsers = ({ usuario, isAdmin }) => {
     }
   }, [isAdmin]);
 
+  // Escuchar evento de sincronización completada para recargar usuarios
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const handleSyncCompleted = () => {
+      console.log('🔄 Sincronización completada, recargando usuarios...');
+      loadUsers();
+    };
+
+    window.addEventListener('syncCompleted', handleSyncCompleted);
+    return () => {
+      window.removeEventListener('syncCompleted', handleSyncCompleted);
+    };
+  }, [isAdmin, usuario]);
+
   const loadUsers = async () => {
     setLoading(true);
     try {

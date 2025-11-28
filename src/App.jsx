@@ -3,6 +3,7 @@ import "./styles/login.css";
 import Login from "./login.jsx"; // Importa el componente Login separado
 import Dashboard from "./components/Dashboard"; // Importa el nuevo Dashboard
 import config from "./config";
+import { syncPendingRequests, hasPendingRequests } from "./utils/onlineSync";
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -62,6 +63,101 @@ const App = () => {
           });
       }
     }
+  }, []);
+
+  // Detectar cuando vuelve la conexión y sincronizar automáticamente
+  useEffect(() => {
+    const handleOnline = async () => {
+      console.log('🌐 Conexión restaurada');
+      
+      // Verificar si hay registros pendientes
+      const hasPending = await hasPendingRequests();
+      
+      if (hasPending) {
+        // Mostrar notificación de sincronización
+        const syncNotification = document.createElement('div');
+        syncNotification.id = 'sync-notification';
+        syncNotification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 1rem 1.5rem;
+          border-radius: 8px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+          z-index: 10000;
+          max-width: 300px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        `;
+        syncNotification.innerHTML = `
+          <div style="font-size: 1.5rem;">🔄</div>
+          <div>
+            <div style="font-weight: 600;">Sincronizando datos...</div>
+            <div style="font-size: 0.8rem; opacity: 0.9;">Los datos se actualizarán automáticamente</div>
+          </div>
+        `;
+        document.body.appendChild(syncNotification);
+
+        // Sincronizar registros pendientes
+        const result = await syncPendingRequests();
+        
+        // Actualizar notificación
+        if (result.success) {
+          syncNotification.innerHTML = `
+            <div style="font-size: 1.5rem;">✅</div>
+            <div>
+              <div style="font-weight: 600;">Sincronización completada</div>
+              <div style="font-size: 0.8rem; opacity: 0.9;">${result.synced} exitosos, ${result.failed} fallidos</div>
+            </div>
+          `;
+          syncNotification.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+          
+          // Disparar evento personalizado para actualizar componentes
+          window.dispatchEvent(new CustomEvent('syncCompleted', { 
+            detail: { synced: result.synced, failed: result.failed } 
+          }));
+        } else {
+          syncNotification.innerHTML = `
+            <div style="font-size: 1.5rem;">⚠️</div>
+            <div>
+              <div style="font-weight: 600;">Error en sincronización</div>
+              <div style="font-size: 0.8rem; opacity: 0.9;">Se reintentará más tarde</div>
+            </div>
+          `;
+          syncNotification.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+        }
+
+        // Ocultar notificación después de 3 segundos
+        setTimeout(() => {
+          if (document.body.contains(syncNotification)) {
+            syncNotification.style.transition = 'opacity 0.3s ease';
+            syncNotification.style.opacity = '0';
+            setTimeout(() => {
+              if (document.body.contains(syncNotification)) {
+                document.body.removeChild(syncNotification);
+              }
+            }, 300);
+          }
+        }, 3000);
+      }
+    };
+
+    // Escuchar evento online
+    window.addEventListener('online', handleOnline);
+
+    // Verificar si ya hay conexión al cargar
+    if (navigator.onLine) {
+      handleOnline();
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
   // Si no está logueado, mostrar el Login

@@ -38,6 +38,23 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
     }
   }, [isAdmin]);
 
+  // Escuchar evento de sincronización completada para recargar datos
+  useEffect(() => {
+    const handleSyncCompleted = () => {
+      console.log('🔄 Sincronización completada, recargando datos de admin...');
+      if (isAdmin) {
+        loadStats();
+        loadNotificationHistory();
+        loadSubscriptions();
+      }
+    };
+
+    window.addEventListener('syncCompleted', handleSyncCompleted);
+    return () => {
+      window.removeEventListener('syncCompleted', handleSyncCompleted);
+    };
+  }, [isAdmin]);
+
   // Debug: Log cuando cambie activeSubscriptions
   useEffect(() => {
     console.log('[AdminNotifications] activeSubscriptions actualizado:', activeSubscriptions);
