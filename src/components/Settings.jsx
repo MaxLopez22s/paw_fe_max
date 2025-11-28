@@ -186,12 +186,22 @@ const Settings = ({ usuario }) => {
       console.log('Push Manager disponible:', registration.pushManager);
       
       // Verificar si ya existe una suscripción activa (reutilizar la misma)
-      let subscription = await registration.pushManager.getSubscription();
-      console.log('Suscripción existente:', subscription ? 'Sí' : 'No');
+      console.log('🔍 Verificando suscripción existente...');
+      let subscription;
+      try {
+        subscription = await registration.pushManager.getSubscription();
+        console.log('Suscripción existente:', subscription ? 'Sí' : 'No');
+        if (subscription) {
+          console.log('Endpoint de suscripción existente:', subscription.endpoint);
+        }
+      } catch (subError) {
+        console.error('Error obteniendo suscripción existente:', subError);
+        throw new Error('No se pudo verificar suscripciones existentes');
+      }
       
       // Si no existe, crear una nueva
       if (!subscription) {
-        console.log('Creando nueva suscripción push...');
+        console.log('📝 Creando nueva suscripción push...');
         const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
         const urlBase64ToUint8Array = (base64String) => {
           const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -206,11 +216,18 @@ const Settings = ({ usuario }) => {
           return outputArray;
         };
 
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-        });
-        console.log('✅ Nueva suscripción creada');
+        try {
+          console.log('📝 Llamando a pushManager.subscribe()...');
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+          console.log('✅ Nueva suscripción creada');
+          console.log('Endpoint:', subscription.endpoint);
+        } catch (subscribeError) {
+          console.error('❌ Error creando suscripción push:', subscribeError);
+          throw new Error(`Error al crear suscripción push: ${subscribeError.message}`);
+        }
       }
 
       const notificationConfig = NOTIFICATION_CONFIGS[type] || NOTIFICATION_CONFIGS[NOTIFICATION_TYPES.DEFAULT];
