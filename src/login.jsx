@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import "./styles/login.css"; // Ruta corregida
+import "./styles/login.css";
 import { savePending } from "./idb";
+import config from "./config";
 
 const Login = ({ onLogin }) => {
   const [telefono, setTelefono] = useState("");
@@ -10,6 +11,7 @@ const Login = ({ onLogin }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 
+  // ---------- REGISTRO ----------
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -19,44 +21,38 @@ const Login = ({ onLogin }) => {
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch(`${config.API_URL}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           telefono,
           password,
           name,
-          email: email || null
-        })
+          email: email || null,
+        }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.message || 'Error al registrar usuario');
+        setError(data.message || "Error al registrar usuario");
         return;
       }
 
-      const userData = await response.json();
-      if (userData.success) {
+      if (data.success) {
         setError("✅ Usuario registrado exitosamente. Ahora puedes iniciar sesión.");
         setIsRegistering(false);
-        // Limpiar campos
         setPassword("");
         setName("");
         setEmail("");
       }
     } catch (error) {
-      console.error('Error en registro:', error);
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        setError("⚠️ Error de conexión. Verifica que el backend esté corriendo.");
-      } else {
-        setError("❌ Error al registrar usuario. Intenta nuevamente.");
-      }
+      console.error("Error en registro:", error);
+      setError("⚠️ Error de conexión con el servidor.");
     }
   };
 
+  // ---------- LOGIN ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -68,62 +64,47 @@ const Login = ({ onLogin }) => {
     const loginData = {
       telefono,
       password,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(loginData)
+      const response = await fetch(`${config.API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loginData),
       });
 
+      const userData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
         if (response.status === 401) {
-          setError("Credenciales incorrectas. Verifica tu teléfono y contraseña.");
+          setError("Credenciales incorrectas.");
           return;
         }
-        throw new Error(errorData.message || 'Error en el servidor');
+        throw new Error(userData.message || "Error en el servidor");
       }
 
-      const userData = await response.json();
-      console.log('Login response:', userData);
       if (userData.success) {
         const adminStatus = userData.user?.isAdmin || false;
-        console.log('Login - Admin status:', adminStatus, 'for user:', telefono);
+        const userId = userData.user?._id || userData.user?.id || null;
+
         localStorage.setItem("usuario", telefono);
         localStorage.setItem("isAdmin", adminStatus.toString());
+        if (userId) localStorage.setItem("userId", userId);
+
         onLogin(telefono, adminStatus);
       } else {
         setError(userData.message || "Error al iniciar sesión");
       }
     } catch (error) {
-      console.error('Error en login:', error);
-      
-      // Verificar si es un error de conexión
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        // Si falla por conexión, guardar en IndexedDB y registrar sync
-        try {
-          console.log('Error de conexión. Guardando en IndexedDB...', loginData);
-          await savePending(loginData);
-          
-          // Registrar Background Sync
-          if ('serviceWorker' in navigator && 'SyncManager' in window) {
-            const registration = await navigator.serviceWorker.ready;
-            await registration.sync.register('sync-posts');
-            console.log('Sync registrado para reintentar login');
-          }
-          
-          setError("⚠️ Error de conexión. Verifica que el backend esté corriendo en http://localhost:3001. Los datos se guardaron y se intentarán más tarde.");
-        } catch (dbError) {
-          console.error('Error al guardar en IndexedDB:', dbError);
-          setError("❌ Error grave. Verifica que el backend esté corriendo y que tengas conexión a internet.");
-        }
+      console.error("Error en login:", error);
+
+      if (error.message.includes("Failed to fetch")) {
+        // Guarda login offline
+        await savePending(loginData);
+        setError("⚠️ Sin conexión. El login se reintentará automáticamente.");
       } else {
-        setError(error.message || "Error al iniciar sesión. Intenta nuevamente.");
+        setError("❌ Error al iniciar sesión.");
       }
     }
   };
@@ -131,7 +112,10 @@ const Login = ({ onLogin }) => {
   return (
     <div className="login-container">
       <h1 className="login-title">{isRegistering ? "Registrarse" : "Bienvenido"}</h1>
-      <form onSubmit={isRegistering ? handleRegister : handleSubmit} className="login-form">
+      <form
+        onSubmit={isRegistering ? handleRegister : handleSubmit}
+        className="login-form"
+      >
         <input
           type="tel"
           placeholder="Número de teléfono"
@@ -139,6 +123,7 @@ const Login = ({ onLogin }) => {
           onChange={(e) => setTelefono(e.target.value)}
           required
         />
+
         {isRegistering && (
           <input
             type="text"
@@ -148,6 +133,7 @@ const Login = ({ onLogin }) => {
             required
           />
         )}
+
         <input
           type="password"
           placeholder="Contraseña"
@@ -155,6 +141,7 @@ const Login = ({ onLogin }) => {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+
         {isRegistering && (
           <input
             type="email"
@@ -163,10 +150,17 @@ const Login = ({ onLogin }) => {
             onChange={(e) => setEmail(e.target.value)}
           />
         )}
-        {error && <p className={`login-error ${error.includes('✅') ? 'success' : ''}`}>{error}</p>}
+
+        {error && (
+          <p className={`login-error ${error.includes("✅") ? "success" : ""}`}>
+            {error}
+          </p>
+        )}
+
         <button type="submit">
           {isRegistering ? "Registrarse" : "Iniciar sesión"}
         </button>
+
         <button
           type="button"
           onClick={() => {
@@ -178,7 +172,9 @@ const Login = ({ onLogin }) => {
           }}
           className="toggle-form-btn"
         >
-          {isRegistering ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Regístrate"}
+          {isRegistering
+            ? "¿Ya tienes cuenta? Inicia sesión"
+            : "¿No tienes cuenta? Regístrate"}
         </button>
       </form>
     </div>

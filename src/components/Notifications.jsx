@@ -5,6 +5,7 @@ const Notifications = ({ usuario }) => {
   const [notificationStatus, setNotificationStatus] = useState('');
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const [notificationHistory, setNotificationHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [customNotification, setCustomNotification] = useState({
     title: '',
     body: '',
@@ -51,9 +52,124 @@ const Notifications = ({ usuario }) => {
     }
   };
 
-  const loadNotificationHistory = () => {
-    const history = JSON.parse(localStorage.getItem('notificationHistory') || '[]');
-    setNotificationHistory(history);
+  const loadNotificationHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      console.log('[Notifications] Cargando historial de notificaciones...');
+      
+      // Primero cargar desde localStorage (rápido)
+      const localHistory = JSON.parse(localStorage.getItem('notificationHistory') || '[]');
+      setNotificationHistory(localHistory);
+      
+      // Obtener userId (intentar obtenerlo si no está disponible)
+      let userId = localStorage.getItem('userId');
+      const usuario = localStorage.getItem('usuario');
+      
+      // Si no hay userId, intentar obtenerlo del servidor
+      if (!userId && usuario) {
+        try {
+          console.log('[Notifications] Intentando obtener userId para usuario:', usuario);
+          const userResponse = await fetch(`${config.API_URL}/api/auth/user-by-telefono/${usuario}`);
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            if (userData.success && userData.user && (userData.user.id || userData.user._id)) {
+              userId = userData.user.id || userData.user._id;
+              localStorage.setItem('userId', userId);
+              console.log('[Notifications] userId obtenido:', userId);
+            }
+          }
+        } catch (error) {
+          console.warn('[Notifications] No se pudo obtener userId:', error);
+        }
+      }
+      
+      // Luego cargar desde el servidor
+      if (userId) {
+        try {
+          // Primero obtener las suscripciones activas del usuario
+          let activeSubscriptionTypes = [];
+          try {
+            const subsResponse = await fetch(`${config.API_URL}/api/subscriptions/${userId}?activeOnly=true`);
+            if (subsResponse.ok) {
+              const subsData = await subsResponse.json();
+              if (subsData.success && subsData.subscriptions) {
+                activeSubscriptionTypes = subsData.subscriptions
+                  .filter(sub => sub.active !== false)
+                  .map(sub => sub.type);
+              }
+            }
+          } catch (error) {
+            console.error('Error obteniendo suscripciones:', error);
+          }
+          
+          // Cargar notificaciones del servidor
+          const response = await fetch(`${config.API_URL}/api/notifications/${userId}?limit=50`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.notifications) {
+              // Filtrar notificaciones por tipos de suscripción activos
+              // Solo mostrar notificaciones de tipos a los que el usuario está suscrito
+              let filteredNotifications = [];
+              if (activeSubscriptionTypes.length > 0) {
+                // Filtrar solo por tipos de suscripción activos
+                filteredNotifications = data.notifications.filter(notif => 
+                  activeSubscriptionTypes.includes(notif.type)
+                );
+                console.log(`Filtradas ${filteredNotifications.length} notificaciones de ${data.notifications.length} totales para tipos:`, activeSubscriptionTypes);
+              } else {
+                // Si no hay suscripciones activas, no mostrar notificaciones del servidor
+                console.log('No hay suscripciones activas, no se mostrarán notificaciones del servidor');
+                filteredNotifications = [];
+              }
+              
+              // Convertir notificaciones del servidor al formato esperado
+              const serverNotifications = filteredNotifications.map(notif => ({
+                id: notif._id || notif.id,
+                title: notif.title,
+                body: notif.body,
+                icon: notif.icon,
+                type: notif.type || 'info',
+                timestamp: notif.createdAt || notif.timestamp,
+                read: notif.read || false,
+                url: notif.url
+              }));
+              
+              // Combinar con notificaciones locales y ordenar por fecha
+              // Eliminar duplicados por ID
+              const allNotificationsMap = new Map();
+              
+              // Agregar notificaciones del servidor
+              serverNotifications.forEach(notif => {
+                allNotificationsMap.set(notif.id, notif);
+              });
+              
+              // Agregar notificaciones locales (solo si no están en el servidor)
+              localHistory.forEach(notif => {
+                if (!allNotificationsMap.has(notif.id)) {
+                  allNotificationsMap.set(notif.id, notif);
+                }
+              });
+              
+              // Convertir a array y ordenar
+              const allNotifications = Array.from(allNotificationsMap.values())
+                .sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt))
+                .slice(0, 50); // Mantener solo las últimas 50
+              
+              setNotificationHistory(allNotifications);
+            }
+          }
+        } catch (error) {
+          console.error('[Notifications] Error cargando notificaciones del servidor:', error);
+          // Si falla, usar solo las locales
+        }
+      } else {
+        console.log('[Notifications] No hay userId disponible, usando solo notificaciones locales');
+      }
+    } catch (error) {
+      console.error('[Notifications] Error general cargando historial:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const saveNotificationToHistory = (notification) => {
@@ -305,30 +421,88 @@ const Notifications = ({ usuario }) => {
 
       {/* Notification History */}
       <div className="history-section">
-        <div className="history-header">
+        <div className="history-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3>Historial de Notificaciones</h3>
-          {notificationHistory.length > 0 && (
-            <button className="clear-btn" onClick={clearHistory}>
-              🗑️ Limpiar
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                loadNotificationHistory();
+              }}
+              disabled={loadingHistory}
+              style={{ 
+                padding: '0.5rem 1rem', 
+                background: loadingHistory ? '#ccc' : '#4caf50', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '4px', 
+                cursor: loadingHistory ? 'not-allowed' : 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                opacity: loadingHistory ? 0.7 : 1
+              }}
+            >
+              {loadingHistory ? '⏳ Cargando...' : '🔄 Actualizar'}
             </button>
-          )}
+            {notificationHistory.length > 0 && (
+              <button 
+                className="clear-btn" 
+                onClick={clearHistory}
+                style={{ 
+                  padding: '0.5rem 1rem', 
+                  background: '#f44336', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                🗑️ Limpiar
+              </button>
+            )}
+          </div>
         </div>
         
         <div className="history-list">
           {notificationHistory.length === 0 ? (
-            <p className="no-history">No hay notificaciones enviadas aún</p>
+            <p className="no-history">No hay notificaciones aún</p>
           ) : (
             notificationHistory.map(notification => (
-              <div key={notification.id} className="history-item">
+              <div key={notification.id || notification._id} className="history-item" style={{
+                opacity: notification.read ? 0.7 : 1,
+                borderLeft: notification.read ? '3px solid #ccc' : '3px solid #4caf50'
+              }}>
                 <div className="history-icon">
-                  {notification.type === 'test' ? '🧪' : '📤'}
+                  {notification.type === 'test' ? '🧪' : 
+                   notification.type === 'alerts' ? '🚨' :
+                   notification.type === 'messages' ? '💬' :
+                   notification.type === 'updates' ? '🔄' :
+                   notification.type === 'promotions' ? '🎁' : '📤'}
                 </div>
                 <div className="history-content">
                   <h4>{notification.title}</h4>
                   <p>{notification.body}</p>
-                  <span className="history-time">
-                    {new Date(notification.timestamp).toLocaleString()}
-                  </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                    <span className="history-time">
+                      {new Date(notification.timestamp || notification.createdAt).toLocaleString()}
+                    </span>
+                    {notification.type && (
+                      <span style={{ 
+                        fontSize: '0.75rem', 
+                        color: '#666',
+                        background: '#f0f0f0',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '4px'
+                      }}>
+                        {notification.type}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))

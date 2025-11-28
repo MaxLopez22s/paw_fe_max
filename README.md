@@ -190,6 +190,8 @@ Para problemas o preguntas:
 4. Validar permisos de notificaciones
 
 
+<<<<<<< HEAD
+=======
 
 
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import "./styles/login.css";
-import Login from "./Login"; // Importa el componente Login separado
+import Login from "./login.jsx"; // Importa el componente Login separado
 import Dashboard from "./components/Dashboard"; // Importa el nuevo Dashboard
+import config from "./config";
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -14,6 +15,7 @@ const App = () => {
     setIsAdmin(adminStatus);
     localStorage.setItem("usuario", telefono);
     localStorage.setItem("isAdmin", adminStatus.toString());
+    // userId se guarda en login.jsx
   };
 
   const handleLogout = () => {
@@ -28,11 +30,37 @@ const App = () => {
   useEffect(() => {
     const savedUsuario = localStorage.getItem("usuario");
     const savedIsAdmin = localStorage.getItem("isAdmin") === "true";
-    console.log('App - Restoring session:', { savedUsuario, savedIsAdmin });
+    const savedUserId = localStorage.getItem("userId");
+    console.log('App - Restoring session:', { savedUsuario, savedIsAdmin, savedUserId });
     if (savedUsuario) {
       setIsLoggedIn(true);
       setUsuario(savedUsuario);
       setIsAdmin(savedIsAdmin);
+      
+      // Si no hay userId pero hay usuario, intentar obtenerlo del servidor
+      if (!savedUserId && savedUsuario) {
+        fetch(`${config.API_URL}/api/auth/user-by-telefono/${savedUsuario}`)
+          .then(res => {
+            if (res.ok) {
+              return res.json();
+            }
+            throw new Error(`HTTP ${res.status}`);
+          })
+          .then(data => {
+            if (data.success && data.user) {
+              const userId = data.user.id || data.user._id;
+              if (userId) {
+                localStorage.setItem("userId", userId);
+                console.log('App - userId restaurado del servidor:', userId);
+              } else {
+                console.warn('App - Usuario encontrado pero sin id (puede ser usuario de prueba)');
+              }
+            }
+          })
+          .catch(err => {
+            console.warn('App - No se pudo obtener userId del servidor:', err);
+          });
+      }
     }
   }, []);
 

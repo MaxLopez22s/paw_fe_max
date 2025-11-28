@@ -7,6 +7,7 @@ import {
   NOTIFICATION_CONFIGS,
   requestNotificationPermission
 } from '../utils/pushNotifications';
+import config from '../config';
 
 const Settings = ({ usuario }) => {
   const [settings, setSettings] = useState({
@@ -41,6 +42,7 @@ const Settings = ({ usuario }) => {
   const [saveStatus, setSaveStatus] = useState('');
   const [activeSubscriptions, setActiveSubscriptions] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Para forzar re-render
 
   useEffect(() => {
     // Cargar configuración guardada
@@ -49,54 +51,443 @@ const Settings = ({ usuario }) => {
       setSettings(JSON.parse(savedSettings));
     }
     
-    // Cargar suscripciones activas
-    loadSubscriptions();
+    // Cargar suscripciones activas después de un pequeño delay para asegurar que el userId esté disponible
+    const timer = setTimeout(() => {
+      loadSubscriptions();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const loadSubscriptions = async () => {
     try {
-      const subs = await getActiveSubscriptions();
-      setActiveSubscriptions(subs);
+      const userId = localStorage.getItem('userId');
+      console.log('[loadSubscriptions] Iniciando carga, userId:', userId);
+      
+      // Si hay userId, priorizar datos del servidor
+      if (userId) {
+        try {
+          const response = await fetch(`${config.API_URL}/api/subscriptions/${userId}?activeOnly=true`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[loadSubscriptions] Respuesta del servidor:', data);
+            if (data.success && data.subscriptions && Array.isArray(data.subscriptions)) {
+              // Filtrar SOLO las que están explícitamente activas (active === true o undefined)
+              // NO incluir las que tienen active === false
+              const serverSubs = data.subscriptions
+                .filter(sub => {
+                  if (!sub) return false;
+                  // Solo incluir si active es true o undefined (por defecto activo)
+                  // Excluir explícitamente si active === false
+                  return sub.active !== false && (sub.active === true || sub.active === undefined);
+                })
+                .map(sub => ({
+                  id: sub._id || sub.id || `sub-${Date.now()}-${Math.random()}`,
+                  type: sub.type || 'default',
+                  subscription: sub.subscription || {},
+                  config: sub.config || {},
+                  active: sub.active !== false ? (sub.active === true || sub.active === undefined ? true : false) : false,
+                  createdAt: sub.createdAt,
+                  updatedAt: sub.updatedAt
+                }));
+              console.log('[loadSubscriptions] Suscripciones procesadas del servidor (solo activas):', serverSubs);
+              setActiveSubscriptions(serverSubs);
+              setRefreshKey(prev => prev + 1); // Forzar re-render
+              return; // Salir temprano si tenemos datos del servidor
+            } else {
+              // Si no hay suscripciones en el servidor, limpiar estado
+              console.log('[loadSubscriptions] No hay suscripciones en el servidor o formato inválido');
+              setActiveSubscriptions([]);
+              setRefreshKey(prev => prev + 1); // Forzar re-render
+              return;
+            }
+          } else {
+            console.warn('[loadSubscriptions] Error en respuesta del servidor:', response.status);
+          }
+        } catch (error) {
+          console.error('[loadSubscriptions] Error sincronizando con servidor:', error);
+        }
+      }
+      
+      // Fallback: cargar desde IndexedDB si no hay userId o falló el servidor
+      try {
+        const localSubs = await getActiveSubscriptions();
+        console.log('[loadSubscriptions] Suscripciones locales (IndexedDB):', localSubs);
+        if (localSubs && Array.isArray(localSubs) && localSubs.length > 0) {
+          // Filtrar solo las activas
+          const activeLocalSubs = localSubs.filter(sub => 
+            sub && sub.active !== false && (sub.active === true || sub.active === undefined)
+          );
+          console.log('[loadSubscriptions] Suscripciones locales activas:', activeLocalSubs);
+          setActiveSubscriptions(activeLocalSubs);
+          setRefreshKey(prev => prev + 1); // Forzar re-render
+        } else {
+          console.log('[loadSubscriptions] No hay suscripciones locales');
+          setActiveSubscriptions([]);
+          setRefreshKey(prev => prev + 1); // Forzar re-render
+        }
+      } catch (idbError) {
+        console.error('[loadSubscriptions] Error cargando de IndexedDB:', idbError);
+        setActiveSubscriptions([]);
+      }
     } catch (error) {
-      console.error('Error cargando suscripciones:', error);
+      console.error('[loadSubscriptions] Error general:', error);
+      setActiveSubscriptions([]);
     }
   };
 
   const handleSubscribe = async (type) => {
     setLoadingSubs(true);
+    setSaveStatus('');
     try {
-      const hasPermission = await requestNotificationPermission();
-      if (!hasPermission) {
-        alert('Se necesitan permisos de notificación para suscribirse');
-        setLoadingSubs(false);
-        return;
+      console.log(`🔄 Iniciando suscripción a tipo: ${type}`);
+      
+      // Verificar permisos
+      if (!('Notification' in window)) {
+        throw new Error('Este navegador no soporta notificaciones');
       }
 
-      const config = NOTIFICATION_CONFIGS[type] || NOTIFICATION_CONFIGS[NOTIFICATION_TYPES.DEFAULT];
-      await subscribeToNotificationType(type, config);
+      if (Notification.permission !== 'granted') {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          throw new Error('Se necesitan permisos de notificación para suscribirse');
+        }
+      }
+
+      // Verificar Service Worker
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Service Worker no disponible en este navegador');
+      }
+
+      // Verificar que el service worker esté disponible
+      if (!navigator.serviceWorker) {
+        throw new Error('Service Worker no está disponible');
+      }
+
+      // Obtener el registration primero
+      let registration;
+      try {
+        registration = await navigator.serviceWorker.ready;
+        console.log('Service Worker registration obtenido:', registration);
+      } catch (error) {
+        console.error('Error obteniendo service worker registration:', error);
+        throw new Error('No se pudo obtener el Service Worker. Asegúrate de que esté registrado correctamente.');
+      }
+      
+      // Verificar pushManager después de obtener registration
+      if (!registration) {
+        throw new Error('Service Worker registration no disponible');
+      }
+      
+      if (!registration.pushManager) {
+        throw new Error('Push Manager no disponible. Asegúrate de que el Service Worker esté registrado correctamente.');
+      }
+      
+      console.log('Push Manager disponible:', registration.pushManager);
+      
+      // Verificar si ya existe una suscripción activa (reutilizar la misma)
+      console.log('🔍 Verificando suscripción existente...');
+      let subscription;
+      try {
+        subscription = await registration.pushManager.getSubscription();
+        console.log('Suscripción existente:', subscription ? 'Sí' : 'No');
+        if (subscription) {
+          console.log('Endpoint de suscripción existente:', subscription.endpoint);
+        }
+      } catch (subError) {
+        console.error('Error obteniendo suscripción existente:', subError);
+        throw new Error('No se pudo verificar suscripciones existentes');
+      }
+      
+      // Si no existe, crear una nueva
+      if (!subscription) {
+        console.log('📝 Creando nueva suscripción push...');
+        const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
+        const urlBase64ToUint8Array = (base64String) => {
+          const padding = '='.repeat((4 - base64String.length % 4) % 4);
+          const base64 = (base64String + padding)
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+          const rawData = window.atob(base64);
+          const outputArray = new Uint8Array(rawData.length);
+          for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+          }
+          return outputArray;
+        };
+
+        try {
+          console.log('📝 Llamando a pushManager.subscribe()...');
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+          console.log('✅ Nueva suscripción creada');
+          console.log('Endpoint:', subscription.endpoint);
+        } catch (subscribeError) {
+          console.error('❌ Error creando suscripción push:', subscribeError);
+          throw new Error(`Error al crear suscripción push: ${subscribeError.message}`);
+        }
+      }
+
+      const notificationConfig = NOTIFICATION_CONFIGS[type] || NOTIFICATION_CONFIGS[NOTIFICATION_TYPES.DEFAULT];
+      let userId = localStorage.getItem('userId');
+      const usuario = localStorage.getItem('usuario');
+
+      // Si no hay userId, intentar obtenerlo del servidor
+      if (!userId && usuario) {
+        try {
+          console.log(`📥 Intentando obtener userId para usuario: ${usuario}`);
+          const userResponse = await fetch(`${config.API_URL}/api/auth/user-by-telefono/${usuario}`);
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            if (userData.success && userData.user && (userData.user.id || userData.user._id)) {
+              userId = userData.user.id || userData.user._id;
+              localStorage.setItem('userId', userId);
+              console.log(`✅ userId obtenido y guardado: ${userId}`);
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ No se pudo obtener userId del servidor:', error);
+        }
+      }
+
+      // Si aún no hay userId, guardar solo en IndexedDB y mostrar advertencia
+      if (!userId) {
+        console.warn('⚠️ No hay userId disponible, guardando solo en IndexedDB');
+        try {
+          const { saveSubscription } = await import('../idb');
+          await saveSubscription(subscription, type, notificationConfig);
+          console.log('✅ Guardado en IndexedDB (sin userId)');
+          setSaveStatus(`⚠️ Suscrito localmente a ${type}. Inicia sesión nuevamente para sincronizar con el servidor.`);
+          setTimeout(() => setSaveStatus(''), 5000);
+          await loadSubscriptions();
+          return;
+        } catch (idbError) {
+          console.error('Error guardando en IndexedDB:', idbError);
+          throw new Error('No se pudo guardar la suscripción. Por favor, inicia sesión nuevamente.');
+        }
+      }
+
+      console.log(`📤 Enviando suscripción al servidor para tipo: ${type}, userId: ${userId}`);
+      console.log(`📤 URL del servidor: ${config.API_URL}/api/subscribe`);
+
+      // Enviar al servidor con tipo y userId
+      let response;
+      let responseData = {};
+      
+      try {
+        // Crear un AbortController para timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
+        
+        console.log(`📤 Iniciando fetch a: ${config.API_URL}/api/subscribe`);
+        
+        response = await fetch(`${config.API_URL}/api/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            type,
+            config: notificationConfig,
+            userId
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        console.log(`📥 Respuesta recibida, status: ${response.status}`);
+        
+        try {
+          responseData = await response.json();
+        } catch (jsonError) {
+          console.error('Error parseando JSON de respuesta:', jsonError);
+          const text = await response.text();
+          console.error('Respuesta como texto:', text);
+          throw new Error(`Error en respuesta del servidor: ${response.status} - ${text.substring(0, 100)}`);
+        }
+        
+        if (!response.ok) {
+          console.error('Error del servidor:', responseData);
+          throw new Error(responseData.message || `Error del servidor: ${response.status}`);
+        }
+
+        console.log('✅ Respuesta del servidor:', responseData);
+      } catch (fetchError) {
+        console.error('❌ Error en fetch:', fetchError);
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Tiempo de espera agotado. El servidor no respondió en 10 segundos.');
+        }
+        if (fetchError.message) {
+          throw fetchError;
+        }
+        throw new Error(`Error de conexión: ${fetchError.message || 'No se pudo conectar al servidor. Verifica que el backend esté funcionando.'}`);
+      }
+
+      // Guardar en IndexedDB
+      try {
+        const { saveSubscription } = await import('../idb');
+        await saveSubscription(subscription, type, notificationConfig);
+        console.log('✅ Guardado en IndexedDB');
+      } catch (idbError) {
+        console.warn('⚠️ Error guardando en IndexedDB:', idbError);
+        // Continuar aunque falle IndexedDB
+      }
+      
+      // Esperar un poco y recargar suscripciones
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await loadSubscriptions();
+      
+      // Forzar re-render adicional después de un momento
+      setTimeout(async () => {
+        await loadSubscriptions();
+      }, 500);
+      
       setSaveStatus(`✅ Suscrito a ${type}`);
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (error) {
-      console.error('Error suscribiéndose:', error);
-      setSaveStatus(`❌ Error al suscribirse a ${type}`);
-      setTimeout(() => setSaveStatus(''), 3000);
+      console.error('❌ Error suscribiéndose:', error);
+      console.error('❌ Stack trace:', error.stack);
+      const errorMessage = error.message || 'Error al suscribirse';
+      setSaveStatus(`❌ Error: ${errorMessage}`);
+      setTimeout(() => setSaveStatus(''), 8000);
     } finally {
+      console.log('🔄 Finalizando suscripción, reseteando loading...');
       setLoadingSubs(false);
     }
   };
 
   const handleUnsubscribe = async (type) => {
     setLoadingSubs(true);
+    setSaveStatus('');
     try {
-      await unsubscribeFromNotificationType(type);
+      console.log(`🔄 Iniciando desuscripción de tipo: ${type}`);
+      
+      const userId = localStorage.getItem('userId');
+      const usuario = localStorage.getItem('usuario');
+      
+      // Obtener suscripciones del servidor primero (TODAS, no solo activas) si hay userId
+      let typeSubs = [];
+      let endpoint = null;
+      
+      if (userId) {
+        try {
+          console.log(`📥 Obteniendo TODAS las suscripciones del servidor para userId: ${userId}`);
+          // Obtener todas las suscripciones (activas e inactivas) para poder desactivar
+          const response = await fetch(`${config.API_URL}/api/subscriptions/${userId}?activeOnly=false`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Todas las suscripciones del servidor:', data);
+            if (data.success && data.subscriptions && Array.isArray(data.subscriptions)) {
+              // Normalizar el tipo para comparación
+              const normalizeType = (t) => String(t || '').trim().toLowerCase();
+              const searchType = normalizeType(type);
+              // Buscar suscripciones de este tipo (activas o inactivas)
+              typeSubs = data.subscriptions.filter(sub => {
+                if (!sub || !sub.type) return false;
+                const subType = normalizeType(sub.type);
+                return subType === searchType;
+              });
+              // Priorizar las activas, pero si no hay activas, usar cualquier suscripción de este tipo
+              const activeSub = typeSubs.find(sub => sub.active === true || sub.active === undefined);
+              const subToUse = activeSub || typeSubs[0];
+              if (subToUse && subToUse.subscription && subToUse.subscription.endpoint) {
+                endpoint = subToUse.subscription.endpoint;
+              }
+            }
+          } else {
+            console.warn('Error en respuesta del servidor:', response.status);
+          }
+        } catch (error) {
+          console.error('Error obteniendo suscripciones del servidor:', error);
+        }
+      } else {
+        console.warn('⚠️ No hay userId disponible, solo se desactivará en IndexedDB');
+      }
+      
+      // Si no hay en el servidor, buscar en IndexedDB
+      if (typeSubs.length === 0) {
+        try {
+          console.log('Buscando en IndexedDB...');
+          const subscriptions = await getActiveSubscriptions();
+          // Normalizar el tipo para comparación
+          const normalizeType = (t) => String(t || '').trim().toLowerCase();
+          const searchType = normalizeType(type);
+          typeSubs = subscriptions.filter(sub => {
+            if (!sub || !sub.type) return false;
+            const subType = normalizeType(sub.type);
+            return subType === searchType;
+          });
+          if (typeSubs.length > 0 && typeSubs[0].subscription && typeSubs[0].subscription.endpoint) {
+            endpoint = typeSubs[0].subscription.endpoint;
+          }
+        } catch (error) {
+          console.error('Error obteniendo suscripciones de IndexedDB:', error);
+        }
+      }
+      
+      if (!endpoint) {
+        throw new Error('No se encontró endpoint de suscripción activa de este tipo');
+      }
+      
+      // Normalizar el tipo antes de enviarlo
+      const normalizedType = String(type || 'default').trim().toLowerCase();
+      console.log(`📤 Desactivando suscripción en el servidor: endpoint=${endpoint}, type=${normalizedType} (original: ${type})`);
+      
+      // Desactivar en el servidor solo si hay userId
+      if (userId) {
+        const response = await fetch(`${config.API_URL}/api/unsubscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            endpoint,
+            type: normalizedType,
+            userId
+          })
+        });
+        
+        const responseData = await response.json().catch(() => ({}));
+        
+        if (!response.ok) {
+          console.warn('⚠️ Error al desuscribirse en el servidor:', responseData);
+          // Continuar aunque falle el servidor
+        } else {
+          console.log('✅ Desuscripción exitosa en el servidor:', responseData);
+        }
+      } else {
+        console.warn('⚠️ No hay userId, solo se desactivará en IndexedDB');
+      }
+      
+      // Desactivar en IndexedDB
+      for (const sub of typeSubs) {
+        try {
+          if (sub.id) {
+            const { deactivateSubscription } = await import('../idb');
+            await deactivateSubscription(sub.id);
+            console.log(`✅ Desactivada suscripción ${sub.id} en IndexedDB`);
+          }
+        } catch (error) {
+          console.error('Error desactivando en IndexedDB:', error);
+          // Continuar aunque falle
+        }
+      }
+      
+      // Esperar un poco y recargar suscripciones
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await loadSubscriptions();
+      
+      // Forzar re-render adicional después de un momento
+      setTimeout(async () => {
+        await loadSubscriptions();
+      }, 500);
+      
       setSaveStatus(`✅ Desuscrito de ${type}`);
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (error) {
-      console.error('Error desuscribiéndose:', error);
-      setSaveStatus(`❌ Error al desuscribirse de ${type}`);
-      setTimeout(() => setSaveStatus(''), 3000);
+      console.error('❌ Error desuscribiéndose:', error);
+      setSaveStatus(`❌ Error: ${error.message || 'Error al desuscribirse'}`);
+      setTimeout(() => setSaveStatus(''), 5000);
     } finally {
       setLoadingSubs(false);
     }
@@ -364,10 +755,30 @@ const Settings = ({ usuario }) => {
               Suscríbete a diferentes tipos de notificaciones con configuraciones personalizadas
             </p>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div key={refreshKey} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {Object.entries(NOTIFICATION_TYPES).map(([key, type]) => {
-                const isSubscribed = activeSubscriptions.some(sub => sub.type === type);
+                // Verificar si hay una suscripción activa de este tipo
+                // Solo considerar activas si active === true o active === undefined (por defecto activo)
+                // NO considerar activas si active === false explícitamente
+                const matchingSubs = activeSubscriptions.filter(
+                  sub => sub && sub.type === type
+                );
+                const isSubscribed = matchingSubs.some(
+                  sub => sub.active !== false && (sub.active === true || sub.active === undefined)
+                );
                 const config = NOTIFICATION_CONFIGS[type];
+                
+                // Log para debug
+                console.log(`[Settings] Tipo ${type}:`, {
+                  totalSubs: activeSubscriptions.length,
+                  matchingSubs: matchingSubs.length,
+                  isSubscribed,
+                  subsDetails: matchingSubs.map(s => ({ 
+                    id: s.id, 
+                    type: s.type, 
+                    active: s.active 
+                  }))
+                });
                 
                 return (
                   <div 
@@ -390,7 +801,15 @@ const Settings = ({ usuario }) => {
                     </div>
                     {isSubscribed ? (
                       <button
-                        onClick={() => handleUnsubscribe(type)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleUnsubscribe(type).catch(err => {
+                            console.error('Error en handleUnsubscribe:', err);
+                            setSaveStatus(`❌ Error: ${err.message || 'Error al desuscribirse'}`);
+                            setTimeout(() => setSaveStatus(''), 5000);
+                          });
+                        }}
                         disabled={loadingSubs}
                         style={{
                           padding: '0.5rem 1rem',
@@ -398,14 +817,23 @@ const Settings = ({ usuario }) => {
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
-                          cursor: loadingSubs ? 'not-allowed' : 'pointer'
+                          cursor: loadingSubs ? 'not-allowed' : 'pointer',
+                          fontWeight: '500'
                         }}
                       >
-                        Desuscribirse
+                        {loadingSubs ? '⏳' : 'Desuscribirse'}
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleSubscribe(type)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleSubscribe(type).catch(err => {
+                            console.error('Error en handleSubscribe:', err);
+                            setSaveStatus(`❌ Error: ${err.message || 'Error al suscribirse'}`);
+                            setTimeout(() => setSaveStatus(''), 5000);
+                          });
+                        }}
                         disabled={loadingSubs}
                         style={{
                           padding: '0.5rem 1rem',
@@ -413,10 +841,11 @@ const Settings = ({ usuario }) => {
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
-                          cursor: loadingSubs ? 'not-allowed' : 'pointer'
+                          cursor: loadingSubs ? 'not-allowed' : 'pointer',
+                          fontWeight: '500'
                         }}
                       >
-                        Suscribirse
+                        {loadingSubs ? '⏳' : 'Suscribirse'}
                       </button>
                     )}
                   </div>

@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import config from './config'
 
 // Configuración VAPID
 const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
@@ -27,7 +28,7 @@ import { saveSubscription, getSubscriptions } from './idb';
 import { postWithSync } from './utils/apiWithSync';
 
 // Función para suscribirse a notificaciones push con tipo personalizado
-const subscribeToPush = async (registration, type = 'default', config = {}) => {
+const subscribeToPush = async (registration, type = 'default', configData = {}) => {
   try {
     // Verificar si ya existe una suscripción activa de este tipo
     const existingSubs = await getSubscriptions(type, true);
@@ -44,10 +45,10 @@ const subscribeToPush = async (registration, type = 'default', config = {}) => {
     console.log('Suscripción push exitosa:', subscription.toJSON());
     
     // Guardar en IndexedDB con tipo y configuración
-    await saveSubscription(subscription, type, config);
+    await saveSubscription(subscription, type, configData);
     
     // Enviar la suscripción al servidor con información del tipo
-    await sendSubscriptionToServer(subscription, type, config);
+    await sendSubscriptionToServer(subscription, type, configData);
     
     return subscription;
   } catch (error) {
@@ -57,12 +58,12 @@ const subscribeToPush = async (registration, type = 'default', config = {}) => {
 };
 
 // Función para enviar la suscripción al servidor con tipo y configuración
-const sendSubscriptionToServer = async (subscription, type = 'default', config = {}) => {
+const sendSubscriptionToServer = async (subscription, type = 'default', configData = {}) => {
   try {
     const response = await postWithSync('/api/subscribe', {
       subscription: subscription.toJSON ? subscription.toJSON() : subscription,
       type,
-      config
+      config: configData
     });
 
     if (!response.ok) {
@@ -106,26 +107,10 @@ if ('serviceWorker' in navigator) {
       // Solicitar permisos de notificación
       const hasPermission = await requestNotificationPermission();
       
+      // No crear suscripción automáticamente - el usuario debe hacerlo manualmente desde Settings
+      // Esto evita problemas con suscripciones no deseadas
       if (hasPermission && 'pushManager' in registration) {
-        try {
-          // Verificar si ya existe una suscripción activa
-          const { getSubscriptions } = await import('./idb');
-          const existingSubs = await getSubscriptions('default', true);
-          
-          // Solo suscribirse si no hay suscripciones activas
-          if (existingSubs.length === 0) {
-            // Suscribirse con tipo por defecto
-            await subscribeToPush(registration, 'default', {
-              title: 'Notificación General',
-              icon: '/icons/ico1.ico',
-              badge: '/icons/ico2.ico'
-            });
-          } else {
-            console.log('Ya existe una suscripción activa, omitiendo suscripción por defecto');
-          }
-        } catch (error) {
-          console.error('Error en suscripción push:', error);
-        }
+        console.log('Service Worker listo para notificaciones push. Usa Settings para suscribirte.');
       }
 
       // Escuchar mensajes del Service Worker

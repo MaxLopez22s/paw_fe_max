@@ -41,7 +41,7 @@ export const requestNotificationPermission = async () => {
 };
 
 // Suscribirse a un tipo específico de notificación
-export const subscribeToNotificationType = async (type, config = {}) => {
+export const subscribeToNotificationType = async (type, configData = {}) => {
   try {
     if (!('serviceWorker' in navigator) || !('pushManager' in navigator.serviceWorker.registration)) {
       throw new Error('Service Worker o Push Manager no disponible');
@@ -62,10 +62,10 @@ export const subscribeToNotificationType = async (type, config = {}) => {
     });
 
     // Guardar en IndexedDB
-    await saveSubscription(subscription, type, config);
+    await saveSubscription(subscription, type, configData);
 
     // Enviar al servidor
-    await sendSubscriptionToServer(subscription, type, config);
+    await sendSubscriptionToServer(subscription, type, configData);
 
     return subscription;
   } catch (error) {
@@ -78,6 +78,7 @@ export const subscribeToNotificationType = async (type, config = {}) => {
 export const unsubscribeFromNotificationType = async (type) => {
   try {
     const subscriptions = await getSubscriptions(type, true);
+    const userId = localStorage.getItem('userId');
     
     for (const sub of subscriptions) {
       // Desactivar en IndexedDB
@@ -96,14 +97,19 @@ export const unsubscribeFromNotificationType = async (type) => {
       
       // Notificar al servidor
       try {
-        await fetch('/api/unsubscribe', {
+        const response = await fetch(`${config.API_URL}/api/unsubscribe`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             endpoint: sub.subscription.endpoint,
-            type 
+            type,
+            userId
           })
         });
+        
+        if (!response.ok) {
+          console.error('Error en respuesta del servidor al desuscribirse');
+        }
       } catch (error) {
         console.error('Error notificando al servidor:', error);
       }
@@ -127,7 +133,7 @@ export const getSubscriptionsByType = async (type) => {
 };
 
 // Enviar suscripción al servidor
-const sendSubscriptionToServer = async (subscription, type, config) => {
+const sendSubscriptionToServer = async (subscription, type, configData) => {
   try {
     const response = await postWithSync('/api/subscribe', {
       subscription: subscription.toJSON ? subscription.toJSON() : subscription,
