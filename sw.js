@@ -563,6 +563,34 @@ self.addEventListener('message', event => {
     });
   }
   
+  // Manejar limpieza de caché desde el código
+  if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
+    console.log('🗑️ Service Worker: Limpiando todas las cachés...');
+    event.waitUntil(
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            console.log(`🗑️ Service Worker eliminando caché: ${cacheName}`);
+            return caches.delete(cacheName);
+          })
+        ).then(() => {
+          console.log('✅ Service Worker: Todas las cachés eliminadas');
+          // Notificar a los clientes
+          return self.clients.matchAll().then(clients => {
+            clients.forEach(client => {
+              client.postMessage({ 
+                type: 'CACHE_CLEARED', 
+                message: 'Cachés limpiadas desde Service Worker' 
+              });
+            });
+          });
+        });
+      }).catch(error => {
+        console.error('❌ Error limpiando cachés en Service Worker:', error);
+      })
+    );
+  }
+  
   // Manejar mensajes para mostrar notificaciones manuales
   if (event.data && event.data.type === 'show-notification') {
     const options = {
