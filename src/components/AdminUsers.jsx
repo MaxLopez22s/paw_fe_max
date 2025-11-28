@@ -74,8 +74,19 @@ const AdminUsers = ({ usuario, isAdmin }) => {
       }
     } catch (error) {
       console.error('Error creando usuario:', error);
-      if (error.message.includes('Sin conexión') || error.message.includes('sincronización')) {
-        setMessage(`⚠️ ${error.message}`);
+      // Verificar si es un error de conexión
+      const errorMessage = error.message || '';
+      if (
+        errorMessage.includes('Sin conexión') || 
+        errorMessage.includes('sincronización') ||
+        errorMessage.includes('Failed to fetch') ||
+        errorMessage.includes('NetworkError') ||
+        !navigator.onLine
+      ) {
+        setMessage(`⚠️ ${errorMessage || 'Sin conexión. Los datos se sincronizarán automáticamente cuando se recupere la conexión.'}`);
+        // Limpiar formulario para indicar que se guardó correctamente
+        resetForm();
+        setShowCreateForm(false);
       } else {
         setMessage('❌ Error al crear usuario');
       }

@@ -46,17 +46,17 @@ export const fetchWithSync = async (url, options = {}) => {
     // Para errores 4xx (del cliente), no guardar, solo lanzar error
     throw new Error(`Error: ${response.status} - ${response.statusText}`);
   } catch (error) {
+    // Si el error es porque no hay conexión
+    if (!navigator.onLine) {
+      await savePendingRequest(url, body, requestHeaders);
+      throw new Error('Sin conexión. Los datos se sincronizarán automáticamente cuando se recupere la conexión.');
+    }
+
     // Si es un error de red o conexión, guardar para sincronización posterior
     if (
       error instanceof TypeError && 
       (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed'))
     ) {
-      await savePendingRequest(url, body, requestHeaders);
-      throw error;
-    }
-
-    // Si el error es porque no hay conexión
-    if (!navigator.onLine) {
       await savePendingRequest(url, body, requestHeaders);
       throw new Error('Sin conexión. Los datos se sincronizarán automáticamente cuando se recupere la conexión.');
     }

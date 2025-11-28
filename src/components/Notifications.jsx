@@ -232,7 +232,19 @@ const Notifications = ({ usuario }) => {
       try {
         await postWithSync('/api/subscribe', subscription.toJSON());
       } catch (error) {
-        console.error('Error guardando suscripción (se reintentará automáticamente):', error);
+        // Verificar si es un error de conexión
+        const errorMessage = error.message || '';
+        if (
+          errorMessage.includes('Sin conexión') || 
+          errorMessage.includes('sincronización') ||
+          errorMessage.includes('Failed to fetch') ||
+          errorMessage.includes('NetworkError') ||
+          !navigator.onLine
+        ) {
+          console.log('⚠️ Sin conexión. La suscripción se guardó localmente y se sincronizará automáticamente cuando se recupere la conexión.');
+        } else {
+          console.error('Error guardando suscripción (se reintentará automáticamente):', error);
+        }
         // No lanzar error aquí, la suscripción local está creada y se sincronizará
       }
 

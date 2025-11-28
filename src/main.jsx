@@ -72,7 +72,19 @@ const sendSubscriptionToServer = async (subscription, type = 'default', configDa
 
     console.log('Suscripción enviada al servidor exitosamente');
   } catch (error) {
-    console.error('Error al enviar suscripción:', error);
+    // Verificar si es un error de conexión
+    const errorMessage = error.message || '';
+    if (
+      errorMessage.includes('Sin conexión') || 
+      errorMessage.includes('sincronización') ||
+      errorMessage.includes('Failed to fetch') ||
+      errorMessage.includes('NetworkError') ||
+      !navigator.onLine
+    ) {
+      console.log('⚠️ Sin conexión. La suscripción se guardó localmente y se sincronizará automáticamente cuando se recupere la conexión.');
+    } else {
+      console.error('Error al enviar suscripción:', error);
+    }
     // La suscripción se guardará automáticamente en IndexedDB para sincronización posterior
   }
 };
