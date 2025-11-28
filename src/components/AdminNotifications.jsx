@@ -870,11 +870,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
                 if (!sub || !sub.type) return false;
                 const subType = normalizeType(sub.type);
                 const searchType = normalizeType(type);
-                const matches = subType === searchType;
-                if (!matches) {
-                  console.log(`[AdminNotifications] Tipo no coincide: "${subType}" !== "${searchType}" (original: "${sub.type}" vs "${type}")`);
-                }
-                return matches;
+                return subType === searchType;
               }
             );
             const isSubscribed = matchingSubs.some(
