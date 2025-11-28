@@ -1,7 +1,7 @@
 // sw.js - Versión mejorada con mejor manejo de cache, offline y notificaciones personalizadas
-const APP_SHELL = "appShell_v1.8"; // Actualizado a v1.8 (Limpieza automática de caché)
-const DYNAMIC_CACHE = "dynamic_v1.8"; // Actualizado a v1.8
-const API_CACHE = "apiCache_v1.8"; // Cache específico para API
+const APP_SHELL = "appShell_v1.9"; // Actualizado a v1.9 (Sincronización automática cuando vuelve conexión)
+const DYNAMIC_CACHE = "dynamic_v1.9"; // Actualizado a v1.9
+const API_CACHE = "apiCache_v1.9"; // Cache específico para API
 const API_URL = 'https://pwa-be-max.onrender.com'; // URL del backend
 
 // Archivos del App Shell

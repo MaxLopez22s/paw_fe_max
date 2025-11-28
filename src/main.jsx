@@ -135,7 +135,7 @@ if ('serviceWorker' in navigator) {
             if ('caches' in window) {
               caches.keys().then(names => {
               names.forEach(name => {
-                if (!name.includes('v1.8')) { // Mantener solo las cachés actuales
+                if (!name.includes('v1.9')) { // Mantener solo las cachés actuales
                   caches.delete(name);
                 }
               });
@@ -241,7 +241,7 @@ const showUpdateNotification = (message) => {
         const cacheNames = await caches.keys();
         await Promise.all(
           cacheNames.map(name => {
-            if (!name.includes('v1.8')) { // Mantener solo las cachés actuales
+            if (!name.includes('v1.9')) { // Mantener solo las cachés actuales
               return caches.delete(name);
             }
           })
