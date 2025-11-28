@@ -206,7 +206,7 @@ const Notifications = ({ usuario }) => {
   };
 
   const subscribeToPush = async (registration) => {
-    const VAPID_PUBLIC_KEY = 'BNF7IksZuJmIQTntbVFM02H9fbpsC1QheZNbfI9BuwjPceHSJfkWA5gSHTRvKodt_-mCBMNxB86EEOk9dq1suDY';
+    const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
     
     const urlBase64ToUint8Array = (base64String) => {
       const padding = '='.repeat((4 - base64String.length % 4) % 4);
