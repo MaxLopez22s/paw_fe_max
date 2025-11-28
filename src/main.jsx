@@ -125,12 +125,28 @@ if ('serviceWorker' in navigator) {
       console.log('Service Worker registrado correctamente');
 
       // Solicitar permisos de notificación
+      const permissionBefore = Notification.permission;
       const hasPermission = await requestNotificationPermission();
       
-      // No crear suscripción automáticamente - el usuario debe hacerlo manualmente desde Settings
-      // Esto evita problemas con suscripciones no deseadas
-      if (hasPermission && 'pushManager' in registration) {
-        console.log('Service Worker listo para notificaciones push. Usa Settings para suscribirte.');
+      // Si se acaban de conceder los permisos (cambió de 'default' a 'granted'), crear suscripción automáticamente
+      if (hasPermission && permissionBefore !== 'granted' && 'pushManager' in registration) {
+        console.log('✅ Permisos de notificación concedidos. Creando suscripción automáticamente...');
+        try {
+          // Verificar si ya existe una suscripción
+          const existingSubs = await getSubscriptions('default', true);
+          if (existingSubs.length === 0) {
+            // No hay suscripción, crear una nueva
+            await subscribeToPush(registration, 'default', {});
+            console.log('✅ Suscripción por defecto creada automáticamente');
+          } else {
+            console.log('ℹ️ Ya existe una suscripción activa');
+          }
+        } catch (error) {
+          console.error('⚠️ Error creando suscripción automática:', error);
+          console.log('💡 Puedes suscribirte manualmente desde Settings');
+        }
+      } else if (hasPermission && 'pushManager' in registration) {
+        console.log('Service Worker listo para notificaciones push');
       }
 
       // Escuchar mensajes del Service Worker
