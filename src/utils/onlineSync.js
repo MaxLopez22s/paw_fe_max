@@ -18,10 +18,10 @@ export const syncPendingRequests = async () => {
 
     for (const record of allRecords) {
       try {
-        // Normalizar URL
+        // Normalizar URL usando getApiUrl
         let url = record.url || '/api/datos';
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
-          url = `${config.API_URL}${url.startsWith('/') ? url : '/' + url}`;
+          url = config.getApiUrl(url);
         }
 
         const method = record.method || 'POST';
