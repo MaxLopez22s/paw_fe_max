@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { postWithSync } from '../utils/apiWithSync';
 import './AdminUsers.css';
 
 const AdminUsers = ({ usuario, isAdmin }) => {
@@ -55,15 +56,9 @@ const AdminUsers = ({ usuario, isAdmin }) => {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/admin/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          adminTelefono: usuario,
-          ...userForm
-        })
+      const response = await postWithSync('/api/auth/admin/users', {
+        adminTelefono: usuario,
+        ...userForm
       });
 
       const result = await response.json();
@@ -78,7 +73,11 @@ const AdminUsers = ({ usuario, isAdmin }) => {
       }
     } catch (error) {
       console.error('Error creando usuario:', error);
-      setMessage('❌ Error al crear usuario');
+      if (error.message.includes('Sin conexión') || error.message.includes('sincronización')) {
+        setMessage(`⚠️ ${error.message}`);
+      } else {
+        setMessage('❌ Error al crear usuario');
+      }
     } finally {
       setLoading(false);
     }
@@ -345,6 +344,7 @@ const AdminUsers = ({ usuario, isAdmin }) => {
 };
 
 export default AdminUsers;
+
 
 
 

@@ -304,21 +304,28 @@ self.addEventListener('sync', async (event) => {
 
           for (const record of allRecords) {
             try {
-              const response = await fetch('/api/datos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(record)
+              // Usar la URL y método del registro guardado
+              const url = record.url || '/api/datos';
+              const method = record.method || 'POST';
+              const headers = record.headers || { 'Content-Type': 'application/json' };
+              const body = record.body || record;
+
+              const response = await fetch(url, {
+                method: method,
+                headers: headers,
+                body: JSON.stringify(body)
               });
 
               if (response.ok) {
                 // Eliminar del IndexedDB si se subió correctamente
                 await deletePending(db, record.id);
-                console.log(`Registro ${record.id} sincronizado exitosamente`);
+                console.log(`Registro ${record.id} sincronizado exitosamente en ${url}`);
               } else {
-                console.log(`Registro ${record.id} aún falla, manteniendo en DB`);
+                console.log(`Registro ${record.id} aún falla (${response.status}), manteniendo en DB`);
               }
             } catch (err) {
-              console.error('Error al reenviar registro:', err);
+              console.error(`Error al reenviar registro ${record.id}:`, err);
+              // Mantener el registro en DB para reintentar en la próxima sincronización
             }
           }
         } catch (error) {

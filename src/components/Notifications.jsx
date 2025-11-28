@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { postWithSync } from '../utils/apiWithSync';
 
 const Notifications = ({ usuario }) => {
   const [notificationStatus, setNotificationStatus] = useState('');
@@ -112,11 +113,12 @@ const Notifications = ({ usuario }) => {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
 
-      await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subscription.toJSON())
-      });
+      try {
+        await postWithSync('/api/subscribe', subscription.toJSON());
+      } catch (error) {
+        console.error('Error guardando suscripción (se reintentará automáticamente):', error);
+        // No lanzar error aquí, la suscripción local está creada y se sincronizará
+      }
 
       setSubscriptionInfo({
         endpoint: subscription.endpoint,

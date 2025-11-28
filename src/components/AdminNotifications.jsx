@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NOTIFICATION_TYPES } from '../utils/pushNotifications';
+import { postWithSync } from '../utils/apiWithSync';
 import './AdminNotifications.css';
 
 const AdminNotifications = ({ usuario, isAdmin }) => {
@@ -58,24 +59,18 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
     setMessage('');
 
     try {
-      const response = await fetch('/api/notifications/admin/send-by-subscription-type', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          adminTelefono: usuario,
-          subscriptionType: notificationForm.subscriptionType,
-          title: notificationForm.title,
-          body: notificationForm.body,
-          icon: notificationForm.icon,
-          url: notificationForm.url,
-          options: {
-            requireInteraction: notificationForm.requireInteraction,
-            vibrate: notificationForm.vibrate,
-            priority: notificationForm.priority
-          }
-        })
+      const response = await postWithSync('/api/notifications/admin/send-by-subscription-type', {
+        adminTelefono: usuario,
+        subscriptionType: notificationForm.subscriptionType,
+        title: notificationForm.title,
+        body: notificationForm.body,
+        icon: notificationForm.icon,
+        url: notificationForm.url,
+        options: {
+          requireInteraction: notificationForm.requireInteraction,
+          vibrate: notificationForm.vibrate,
+          priority: notificationForm.priority
+        }
       });
 
       const result = await response.json();
@@ -102,7 +97,11 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
       }
     } catch (error) {
       console.error('Error enviando notificación:', error);
-      setMessage('❌ Error al enviar notificación. Verifica que el backend esté corriendo.');
+      if (error.message.includes('Sin conexión') || error.message.includes('sincronización')) {
+        setMessage(`⚠️ ${error.message}`);
+      } else {
+        setMessage('❌ Error al enviar notificación. Verifica que el backend esté corriendo.');
+      }
     } finally {
       setSending(false);
     }

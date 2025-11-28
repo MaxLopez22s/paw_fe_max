@@ -1,5 +1,6 @@
 // Utilidad para gestionar notificaciones push personalizadas
 import { saveSubscription, getSubscriptions, deactivateSubscription } from '../idb';
+import { postWithSync } from './apiWithSync';
 
 const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
 
@@ -128,16 +129,10 @@ export const getSubscriptionsByType = async (type) => {
 // Enviar suscripción al servidor
 const sendSubscriptionToServer = async (subscription, type, config) => {
   try {
-    const response = await fetch('/api/subscribe', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        subscription: subscription.toJSON ? subscription.toJSON() : subscription,
-        type,
-        config
-      })
+    const response = await postWithSync('/api/subscribe', {
+      subscription: subscription.toJSON ? subscription.toJSON() : subscription,
+      type,
+      config
     });
 
     if (!response.ok) {
@@ -147,6 +142,7 @@ const sendSubscriptionToServer = async (subscription, type, config) => {
     console.log(`Suscripción ${type} enviada al servidor exitosamente`);
   } catch (error) {
     console.error('Error al enviar suscripción:', error);
+    // La suscripción se guardará automáticamente en IndexedDB para sincronización posterior
     throw error;
   }
 };
@@ -194,6 +190,7 @@ export const NOTIFICATION_CONFIGS = {
     requireInteraction: false
   }
 };
+
 
 
 

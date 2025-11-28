@@ -24,6 +24,7 @@ const urlBase64ToUint8Array = (base64String) => {
 
 // Importar funciones de IndexedDB
 import { saveSubscription, getSubscriptions } from './idb';
+import { postWithSync } from './utils/apiWithSync';
 
 // Función para suscribirse a notificaciones push con tipo personalizado
 const subscribeToPush = async (registration, type = 'default', config = {}) => {
@@ -58,16 +59,10 @@ const subscribeToPush = async (registration, type = 'default', config = {}) => {
 // Función para enviar la suscripción al servidor con tipo y configuración
 const sendSubscriptionToServer = async (subscription, type = 'default', config = {}) => {
   try {
-    const response = await fetch('/api/subscribe', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        subscription: subscription.toJSON ? subscription.toJSON() : subscription,
-        type,
-        config
-      })
+    const response = await postWithSync('/api/subscribe', {
+      subscription: subscription.toJSON ? subscription.toJSON() : subscription,
+      type,
+      config
     });
 
     if (!response.ok) {
@@ -77,6 +72,7 @@ const sendSubscriptionToServer = async (subscription, type = 'default', config =
     console.log('Suscripción enviada al servidor exitosamente');
   } catch (error) {
     console.error('Error al enviar suscripción:', error);
+    // La suscripción se guardará automáticamente en IndexedDB para sincronización posterior
   }
 };
 
