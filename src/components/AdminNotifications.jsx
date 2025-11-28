@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+<<<<<<< HEAD
 import { 
   NOTIFICATION_TYPES, 
   NOTIFICATION_CONFIGS,
@@ -6,17 +7,24 @@ import {
 } from '../utils/pushNotifications';
 import './AdminNotifications.css';
 import config from '../config';
+=======
+import { NOTIFICATION_TYPES } from '../utils/pushNotifications';
+import './AdminNotifications.css';
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
 
 const AdminNotifications = ({ usuario, isAdmin }) => {
   const [subscriptionStats, setSubscriptionStats] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState('');
+<<<<<<< HEAD
   const [notificationHistory, setNotificationHistory] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [activeSubscriptions, setActiveSubscriptions] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
   
   const [notificationForm, setNotificationForm] = useState({
     subscriptionType: 'default',
@@ -32,6 +40,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
   useEffect(() => {
     if (isAdmin) {
       loadStats();
+<<<<<<< HEAD
       loadNotificationHistory();
       // Cargar suscripciones después de un pequeño delay para asegurar que el userId esté disponible
       const timer = setTimeout(() => {
@@ -50,6 +59,15 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
     setLoading(true);
     try {
       const response = await fetch(`${config.API_URL}/api/notifications/admin/subscription-stats?adminTelefono=${usuario}`);
+=======
+    }
+  }, [isAdmin]);
+
+  const loadStats = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/notifications/admin/subscription-stats?adminTelefono=${usuario}`);
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       if (response.ok) {
         const data = await response.json();
         setSubscriptionStats(data.stats || []);
@@ -62,6 +80,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
     }
   };
 
+<<<<<<< HEAD
   const loadSubscriptions = async () => {
     try {
       const userId = localStorage.getItem('userId');
@@ -490,6 +509,8 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
     }
   };
 
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
   const handleInputChange = (field, value) => {
     setNotificationForm(prev => ({
       ...prev,
@@ -507,7 +528,11 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
     setMessage('');
 
     try {
+<<<<<<< HEAD
       const response = await fetch(`${config.API_URL}/api/notifications/admin/send-by-subscription-type`, {
+=======
+      const response = await fetch('/api/notifications/admin/send-by-subscription-type', {
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -530,10 +555,14 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
       const result = await response.json();
 
       if (result.success) {
+<<<<<<< HEAD
         const sent = result.sent || 0;
         const failed = result.failed || 0;
         const total = result.total || (sent + failed);
         setMessage(`✅ Notificación enviada: ${sent} exitosas, ${failed} fallidas de ${total} total`);
+=======
+        setMessage(`✅ Notificación enviada: ${result.sent} exitosas, ${result.failed} fallidas de ${result.total} total`);
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
         
         // Limpiar formulario
         setNotificationForm({
@@ -547,9 +576,14 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
           priority: 'normal'
         });
 
+<<<<<<< HEAD
         // Recargar estadísticas y notificaciones
         await loadStats();
         await loadNotificationHistory();
+=======
+        // Recargar estadísticas
+        await loadStats();
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       } else {
         setMessage(`❌ Error: ${result.message}`);
       }
@@ -723,6 +757,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
         </div>
       </div>
 
+<<<<<<< HEAD
       {/* Historial de Notificaciones Recibidas */}
       <div className="notifications-history-section" style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '2px solid #ddd' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -928,6 +963,8 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
         </div>
       </div>
 
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       {/* Información adicional */}
       <div className="info-section">
         <h4>ℹ️ Información</h4>
@@ -936,7 +973,10 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
           <li>Cada suscripción puede tener su propia configuración (icono, badge, vibración, etc.)</li>
           <li>Las notificaciones se guardarán en el historial de cada usuario</li>
           <li>Las suscripciones inválidas se desactivarán automáticamente</li>
+<<<<<<< HEAD
           <li>Las notificaciones recibidas se filtran según tus suscripciones activas</li>
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
         </ul>
       </div>
     </div>

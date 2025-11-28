@@ -1,8 +1,14 @@
 // sw.js - Versión mejorada con mejor manejo de cache, offline y notificaciones personalizadas
+<<<<<<< HEAD
 const APP_SHELL = "appShell_v1.7"; // Actualizado a v1.7 (Suscripciones múltiples y notificaciones mejoradas)
 const DYNAMIC_CACHE = "dynamic_v1.7"; // Actualizado a v1.7
 const API_CACHE = "apiCache_v1.7"; // Cache específico para API
 const API_URL = 'https://pwa-be-max.onrender.com'; // URL del backend
+=======
+const APP_SHELL = "appShell_v1.6"; // Actualizado a v1.6 (Registro y gestión de usuarios)
+const DYNAMIC_CACHE = "dynamic_v1.6"; // Actualizado a v1.6
+const API_CACHE = "apiCache_v1.6"; // Cache específico para API
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
 
 // Archivos del App Shell
 const APP_SHELL_FILES = [
@@ -15,6 +21,7 @@ const APP_SHELL_FILES = [
   "/src/main.jsx",
   "/src/login.jsx",
   "/src/idb.js",
+<<<<<<< HEAD
   "/src/utils/pushNotifications.js",
   "/src/styles/login.css",
   "/src/components/AdminUsers.jsx",
@@ -25,6 +32,11 @@ const APP_SHELL_FILES = [
   "/src/components/Settings.css",
   "/src/components/Notifications.jsx",
   "/src/components/Notifications.css",
+=======
+  "/src/styles/login.css",
+  "/src/components/AdminUsers.jsx",
+  "/src/components/AdminUsers.css",
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
   "/icons/ico1.ico",
   "/icons/ico2.ico",
   "/icons/ico3.ico",
@@ -312,7 +324,11 @@ self.addEventListener('sync', async (event) => {
 
           for (const record of allRecords) {
             try {
+<<<<<<< HEAD
               const response = await fetch(`${API_URL}/api/datos`, {
+=======
+              const response = await fetch('/api/datos', {
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(record)

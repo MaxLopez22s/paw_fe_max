@@ -2,7 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+<<<<<<< HEAD
 import config from './config'
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
 
 // Configuración VAPID
 const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
@@ -57,10 +60,16 @@ const subscribeToPush = async (registration, type = 'default', config = {}) => {
 };
 
 // Función para enviar la suscripción al servidor con tipo y configuración
+<<<<<<< HEAD
 const sendSubscriptionToServer = async (subscription, type = 'default', configData = {}) => {
   try {
     const userId = localStorage.getItem('userId');
     const response = await fetch(`${config.API_URL}/api/subscribe`, {
+=======
+const sendSubscriptionToServer = async (subscription, type = 'default', config = {}) => {
+  try {
+    const response = await fetch('/api/subscribe', {
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -68,8 +77,12 @@ const sendSubscriptionToServer = async (subscription, type = 'default', configDa
       body: JSON.stringify({
         subscription: subscription.toJSON ? subscription.toJSON() : subscription,
         type,
+<<<<<<< HEAD
         config: configData,
         userId
+=======
+        config
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       })
     });
 
@@ -113,10 +126,33 @@ if ('serviceWorker' in navigator) {
       // Solicitar permisos de notificación
       const hasPermission = await requestNotificationPermission();
       
+<<<<<<< HEAD
       // No crear suscripción automáticamente - el usuario debe hacerlo manualmente desde Settings
       // Esto evita problemas con suscripciones no deseadas
       if (hasPermission && 'pushManager' in registration) {
         console.log('Service Worker listo para notificaciones push. Usa Settings para suscribirte.');
+=======
+      if (hasPermission && 'pushManager' in registration) {
+        try {
+          // Verificar si ya existe una suscripción activa
+          const { getSubscriptions } = await import('./idb');
+          const existingSubs = await getSubscriptions('default', true);
+          
+          // Solo suscribirse si no hay suscripciones activas
+          if (existingSubs.length === 0) {
+            // Suscribirse con tipo por defecto
+            await subscribeToPush(registration, 'default', {
+              title: 'Notificación General',
+              icon: '/icons/ico1.ico',
+              badge: '/icons/ico2.ico'
+            });
+          } else {
+            console.log('Ya existe una suscripción activa, omitiendo suscripción por defecto');
+          }
+        } catch (error) {
+          console.error('Error en suscripción push:', error);
+        }
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       }
 
       // Escuchar mensajes del Service Worker

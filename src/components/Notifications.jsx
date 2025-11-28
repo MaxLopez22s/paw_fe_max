@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
+<<<<<<< HEAD
 import config from '../config';
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
 
 const Notifications = ({ usuario }) => {
   const [notificationStatus, setNotificationStatus] = useState('');
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const [notificationHistory, setNotificationHistory] = useState([]);
+<<<<<<< HEAD
   const [loadingHistory, setLoadingHistory] = useState(false);
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
   const [customNotification, setCustomNotification] = useState({
     title: '',
     body: '',
@@ -52,6 +58,7 @@ const Notifications = ({ usuario }) => {
     }
   };
 
+<<<<<<< HEAD
   const loadNotificationHistory = async () => {
     setLoadingHistory(true);
     try {
@@ -170,6 +177,11 @@ const Notifications = ({ usuario }) => {
     } finally {
       setLoadingHistory(false);
     }
+=======
+  const loadNotificationHistory = () => {
+    const history = JSON.parse(localStorage.getItem('notificationHistory') || '[]');
+    setNotificationHistory(history);
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
   };
 
   const saveNotificationToHistory = (notification) => {
@@ -229,7 +241,11 @@ const Notifications = ({ usuario }) => {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
 
+<<<<<<< HEAD
       await fetch(`${config.API_URL}/api/subscribe`, {
+=======
+      await fetch('/api/subscribe', {
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(subscription.toJSON())
@@ -420,6 +436,7 @@ const Notifications = ({ usuario }) => {
 
       {/* Notification History */}
       <div className="history-section">
+<<<<<<< HEAD
         <div className="history-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3>Historial de Notificaciones</h3>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -465,10 +482,20 @@ const Notifications = ({ usuario }) => {
               </button>
             )}
           </div>
+=======
+        <div className="history-header">
+          <h3>Historial de Notificaciones</h3>
+          {notificationHistory.length > 0 && (
+            <button className="clear-btn" onClick={clearHistory}>
+              🗑️ Limpiar
+            </button>
+          )}
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
         </div>
         
         <div className="history-list">
           {notificationHistory.length === 0 ? (
+<<<<<<< HEAD
             <p className="no-history">No hay notificaciones aún</p>
           ) : (
             notificationHistory.map(notification => (
@@ -482,10 +509,19 @@ const Notifications = ({ usuario }) => {
                    notification.type === 'messages' ? '💬' :
                    notification.type === 'updates' ? '🔄' :
                    notification.type === 'promotions' ? '🎁' : '📤'}
+=======
+            <p className="no-history">No hay notificaciones enviadas aún</p>
+          ) : (
+            notificationHistory.map(notification => (
+              <div key={notification.id} className="history-item">
+                <div className="history-icon">
+                  {notification.type === 'test' ? '🧪' : '📤'}
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
                 </div>
                 <div className="history-content">
                   <h4>{notification.title}</h4>
                   <p>{notification.body}</p>
+<<<<<<< HEAD
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
                     <span className="history-time">
                       {new Date(notification.timestamp || notification.createdAt).toLocaleString()}
@@ -502,6 +538,11 @@ const Notifications = ({ usuario }) => {
                       </span>
                     )}
                   </div>
+=======
+                  <span className="history-time">
+                    {new Date(notification.timestamp).toLocaleString()}
+                  </span>
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
                 </div>
               </div>
             ))

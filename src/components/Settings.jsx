@@ -7,7 +7,10 @@ import {
   NOTIFICATION_CONFIGS,
   requestNotificationPermission
 } from '../utils/pushNotifications';
+<<<<<<< HEAD
 import config from '../config';
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
 
 const Settings = ({ usuario }) => {
   const [settings, setSettings] = useState({
@@ -42,7 +45,10 @@ const Settings = ({ usuario }) => {
   const [saveStatus, setSaveStatus] = useState('');
   const [activeSubscriptions, setActiveSubscriptions] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
+<<<<<<< HEAD
   const [refreshKey, setRefreshKey] = useState(0); // Para forzar re-render
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
 
   useEffect(() => {
     // Cargar configuración guardada
@@ -51,16 +57,22 @@ const Settings = ({ usuario }) => {
       setSettings(JSON.parse(savedSettings));
     }
     
+<<<<<<< HEAD
     // Cargar suscripciones activas después de un pequeño delay para asegurar que el userId esté disponible
     const timer = setTimeout(() => {
       loadSubscriptions();
     }, 100);
     
     return () => clearTimeout(timer);
+=======
+    // Cargar suscripciones activas
+    loadSubscriptions();
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
   }, []);
 
   const loadSubscriptions = async () => {
     try {
+<<<<<<< HEAD
       const userId = localStorage.getItem('userId');
       console.log('[loadSubscriptions] Iniciando carga, userId:', userId);
       
@@ -133,11 +145,18 @@ const Settings = ({ usuario }) => {
     } catch (error) {
       console.error('[loadSubscriptions] Error general:', error);
       setActiveSubscriptions([]);
+=======
+      const subs = await getActiveSubscriptions();
+      setActiveSubscriptions(subs);
+    } catch (error) {
+      console.error('Error cargando suscripciones:', error);
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
     }
   };
 
   const handleSubscribe = async (type) => {
     setLoadingSubs(true);
+<<<<<<< HEAD
     setSaveStatus('');
     try {
       console.log(`🔄 Iniciando suscripción a tipo: ${type}`);
@@ -300,6 +319,25 @@ const Settings = ({ usuario }) => {
       console.error('❌ Error suscribiéndose:', error);
       setSaveStatus(`❌ Error: ${error.message || 'Error al suscribirse'}`);
       setTimeout(() => setSaveStatus(''), 5000);
+=======
+    try {
+      const hasPermission = await requestNotificationPermission();
+      if (!hasPermission) {
+        alert('Se necesitan permisos de notificación para suscribirse');
+        setLoadingSubs(false);
+        return;
+      }
+
+      const config = NOTIFICATION_CONFIGS[type] || NOTIFICATION_CONFIGS[NOTIFICATION_TYPES.DEFAULT];
+      await subscribeToNotificationType(type, config);
+      await loadSubscriptions();
+      setSaveStatus(`✅ Suscrito a ${type}`);
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch (error) {
+      console.error('Error suscribiéndose:', error);
+      setSaveStatus(`❌ Error al suscribirse a ${type}`);
+      setTimeout(() => setSaveStatus(''), 3000);
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
     } finally {
       setLoadingSubs(false);
     }
@@ -307,6 +345,7 @@ const Settings = ({ usuario }) => {
 
   const handleUnsubscribe = async (type) => {
     setLoadingSubs(true);
+<<<<<<< HEAD
     setSaveStatus('');
     try {
       console.log(`🔄 Iniciando desuscripción de tipo: ${type}`);
@@ -435,6 +474,17 @@ const Settings = ({ usuario }) => {
       console.error('❌ Error desuscribiéndose:', error);
       setSaveStatus(`❌ Error: ${error.message || 'Error al desuscribirse'}`);
       setTimeout(() => setSaveStatus(''), 5000);
+=======
+    try {
+      await unsubscribeFromNotificationType(type);
+      await loadSubscriptions();
+      setSaveStatus(`✅ Desuscrito de ${type}`);
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch (error) {
+      console.error('Error desuscribiéndose:', error);
+      setSaveStatus(`❌ Error al desuscribirse de ${type}`);
+      setTimeout(() => setSaveStatus(''), 3000);
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
     } finally {
       setLoadingSubs(false);
     }
@@ -702,6 +752,7 @@ const Settings = ({ usuario }) => {
               Suscríbete a diferentes tipos de notificaciones con configuraciones personalizadas
             </p>
             
+<<<<<<< HEAD
             <div key={refreshKey} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {Object.entries(NOTIFICATION_TYPES).map(([key, type]) => {
                 // Verificar si hay una suscripción activa de este tipo
@@ -727,6 +778,13 @@ const Settings = ({ usuario }) => {
                   }))
                 });
                 
+=======
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {Object.entries(NOTIFICATION_TYPES).map(([key, type]) => {
+                const isSubscribed = activeSubscriptions.some(sub => sub.type === type);
+                const config = NOTIFICATION_CONFIGS[type];
+                
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
                 return (
                   <div 
                     key={type} 
@@ -748,6 +806,7 @@ const Settings = ({ usuario }) => {
                     </div>
                     {isSubscribed ? (
                       <button
+<<<<<<< HEAD
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -757,6 +816,9 @@ const Settings = ({ usuario }) => {
                             setTimeout(() => setSaveStatus(''), 5000);
                           });
                         }}
+=======
+                        onClick={() => handleUnsubscribe(type)}
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
                         disabled={loadingSubs}
                         style={{
                           padding: '0.5rem 1rem',
@@ -764,6 +826,7 @@ const Settings = ({ usuario }) => {
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
+<<<<<<< HEAD
                           cursor: loadingSubs ? 'not-allowed' : 'pointer',
                           fontWeight: '500'
                         }}
@@ -781,6 +844,16 @@ const Settings = ({ usuario }) => {
                             setTimeout(() => setSaveStatus(''), 5000);
                           });
                         }}
+=======
+                          cursor: loadingSubs ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        Desuscribirse
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSubscribe(type)}
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
                         disabled={loadingSubs}
                         style={{
                           padding: '0.5rem 1rem',
@@ -788,11 +861,18 @@ const Settings = ({ usuario }) => {
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
+<<<<<<< HEAD
                           cursor: loadingSubs ? 'not-allowed' : 'pointer',
                           fontWeight: '500'
                         }}
                       >
                         {loadingSubs ? '⏳' : 'Suscribirse'}
+=======
+                          cursor: loadingSubs ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        Suscribirse
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
                       </button>
                     )}
                   </div>

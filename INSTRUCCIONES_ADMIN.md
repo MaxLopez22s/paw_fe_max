@@ -104,3 +104,8 @@ Verifica que:
 - No haya errores en la consola del navegador
 - El service worker esté actualizado (versión v1.4)
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf

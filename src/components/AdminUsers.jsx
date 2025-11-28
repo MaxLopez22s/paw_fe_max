@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './AdminUsers.css';
+<<<<<<< HEAD
 import config from '../config';
+=======
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
 
 const AdminUsers = ({ usuario, isAdmin }) => {
   const [users, setUsers] = useState([]);
@@ -26,7 +29,11 @@ const AdminUsers = ({ usuario, isAdmin }) => {
   const loadUsers = async () => {
     setLoading(true);
     try {
+<<<<<<< HEAD
       const response = await fetch(`${config.API_URL}/api/auth/admin/users?adminTelefono=${usuario}`);
+=======
+      const response = await fetch(`/api/auth/admin/users?adminTelefono=${usuario}`);
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
@@ -56,7 +63,11 @@ const AdminUsers = ({ usuario, isAdmin }) => {
 
     setLoading(true);
     try {
+<<<<<<< HEAD
       const response = await fetch(`${config.API_URL}/api/auth/admin/users`, {
+=======
+      const response = await fetch('/api/auth/admin/users', {
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +101,11 @@ const AdminUsers = ({ usuario, isAdmin }) => {
 
     setLoading(true);
     try {
+<<<<<<< HEAD
       const response = await fetch(`${config.API_URL}/api/auth/admin/users/${editingUser._id}`, {
+=======
+      const response = await fetch(`/api/auth/admin/users/${editingUser._id}`, {
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +144,11 @@ const AdminUsers = ({ usuario, isAdmin }) => {
 
     setLoading(true);
     try {
+<<<<<<< HEAD
       const response = await fetch(`${config.API_URL}/api/auth/admin/users/${userId}?adminTelefono=${usuario}`, {
+=======
+      const response = await fetch(`/api/auth/admin/users/${userId}?adminTelefono=${usuario}`, {
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
         method: 'DELETE'
       });
 
@@ -347,3 +366,8 @@ const AdminUsers = ({ usuario, isAdmin }) => {
 
 export default AdminUsers;
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
