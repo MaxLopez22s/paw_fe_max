@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import "./styles/login.css";
 import { savePending } from "./idb";
-
-const API_URL = "https://pwa-be-max.onrender.com";
+import config from "./config";
 
 const Login = ({ onLogin }) => {
   const [telefono, setTelefono] = useState("");
@@ -22,7 +21,7 @@ const Login = ({ onLogin }) => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/register`, {
+      const response = await fetch(`${config.API_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -69,7 +68,7 @@ const Login = ({ onLogin }) => {
     };
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const response = await fetch(`${config.API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(loginData),

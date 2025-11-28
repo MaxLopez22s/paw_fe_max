@@ -2,6 +2,7 @@
 const APP_SHELL = "appShell_v1.7"; // Actualizado a v1.7 (Suscripciones múltiples y notificaciones mejoradas)
 const DYNAMIC_CACHE = "dynamic_v1.7"; // Actualizado a v1.7
 const API_CACHE = "apiCache_v1.7"; // Cache específico para API
+const API_URL = 'https://pwa-be-max.onrender.com'; // URL del backend
 
 // Archivos del App Shell
 const APP_SHELL_FILES = [
@@ -311,7 +312,7 @@ self.addEventListener('sync', async (event) => {
 
           for (const record of allRecords) {
             try {
-              const response = await fetch('/api/datos', {
+              const response = await fetch(`${API_URL}/api/datos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(record)

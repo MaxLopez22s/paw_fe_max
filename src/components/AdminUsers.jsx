@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AdminUsers.css';
+import config from '../config';
 
 const AdminUsers = ({ usuario, isAdmin }) => {
   const [users, setUsers] = useState([]);
@@ -25,7 +26,7 @@ const AdminUsers = ({ usuario, isAdmin }) => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/auth/admin/users?adminTelefono=${usuario}`);
+      const response = await fetch(`${config.API_URL}/api/auth/admin/users?adminTelefono=${usuario}`);
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
@@ -55,7 +56,7 @@ const AdminUsers = ({ usuario, isAdmin }) => {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/admin/users', {
+      const response = await fetch(`${config.API_URL}/api/auth/admin/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,7 +90,7 @@ const AdminUsers = ({ usuario, isAdmin }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/auth/admin/users/${editingUser._id}`, {
+      const response = await fetch(`${config.API_URL}/api/auth/admin/users/${editingUser._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +129,7 @@ const AdminUsers = ({ usuario, isAdmin }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/auth/admin/users/${userId}?adminTelefono=${usuario}`, {
+      const response = await fetch(`${config.API_URL}/api/auth/admin/users/${userId}?adminTelefono=${usuario}`, {
         method: 'DELETE'
       });
 

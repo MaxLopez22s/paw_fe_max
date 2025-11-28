@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import config from './config'
 
 // Configuración VAPID
 const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
@@ -56,10 +57,10 @@ const subscribeToPush = async (registration, type = 'default', config = {}) => {
 };
 
 // Función para enviar la suscripción al servidor con tipo y configuración
-const sendSubscriptionToServer = async (subscription, type = 'default', config = {}) => {
+const sendSubscriptionToServer = async (subscription, type = 'default', configData = {}) => {
   try {
     const userId = localStorage.getItem('userId');
-    const response = await fetch('/api/subscribe', {
+    const response = await fetch(`${config.API_URL}/api/subscribe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +68,7 @@ const sendSubscriptionToServer = async (subscription, type = 'default', config =
       body: JSON.stringify({
         subscription: subscription.toJSON ? subscription.toJSON() : subscription,
         type,
-        config,
+        config: configData,
         userId
       })
     });

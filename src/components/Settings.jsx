@@ -7,6 +7,7 @@ import {
   NOTIFICATION_CONFIGS,
   requestNotificationPermission
 } from '../utils/pushNotifications';
+import config from '../config';
 
 const Settings = ({ usuario }) => {
   const [settings, setSettings] = useState({
@@ -66,7 +67,7 @@ const Settings = ({ usuario }) => {
       // Si hay userId, priorizar datos del servidor
       if (userId) {
         try {
-          const response = await fetch(`/api/subscriptions/${userId}?activeOnly=true`);
+          const response = await fetch(`${config.API_URL}/api/subscriptions/${userId}?activeOnly=true`);
           if (response.ok) {
             const data = await response.json();
             console.log('[loadSubscriptions] Respuesta del servidor:', data);
@@ -220,7 +221,7 @@ const Settings = ({ usuario }) => {
       if (!userId && usuario) {
         try {
           console.log(`📥 Intentando obtener userId para usuario: ${usuario}`);
-          const userResponse = await fetch(`/api/auth/user-by-telefono/${usuario}`);
+          const userResponse = await fetch(`${config.API_URL}/api/auth/user-by-telefono/${usuario}`);
           if (userResponse.ok) {
             const userData = await userResponse.json();
             if (userData.success && userData.user && (userData.user.id || userData.user._id)) {
@@ -254,7 +255,7 @@ const Settings = ({ usuario }) => {
       console.log(`📤 Enviando suscripción al servidor para tipo: ${type}, userId: ${userId}`);
 
       // Enviar al servidor con tipo y userId
-      const response = await fetch('/api/subscribe', {
+      const response = await fetch(`${config.API_URL}/api/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -321,7 +322,7 @@ const Settings = ({ usuario }) => {
         try {
           console.log(`📥 Obteniendo TODAS las suscripciones del servidor para userId: ${userId}`);
           // Obtener todas las suscripciones (activas e inactivas) para poder desactivar
-          const response = await fetch(`/api/subscriptions/${userId}?activeOnly=false`);
+          const response = await fetch(`${config.API_URL}/api/subscriptions/${userId}?activeOnly=false`);
           if (response.ok) {
             const data = await response.json();
             console.log('Todas las suscripciones del servidor:', data);
@@ -383,7 +384,7 @@ const Settings = ({ usuario }) => {
       
       // Desactivar en el servidor solo si hay userId
       if (userId) {
-        const response = await fetch('/api/unsubscribe', {
+        const response = await fetch(`${config.API_URL}/api/unsubscribe`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

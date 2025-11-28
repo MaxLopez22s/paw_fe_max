@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import config from '../config';
 
 const Notifications = ({ usuario }) => {
   const [notificationStatus, setNotificationStatus] = useState('');
@@ -68,7 +69,7 @@ const Notifications = ({ usuario }) => {
       if (!userId && usuario) {
         try {
           console.log('[Notifications] Intentando obtener userId para usuario:', usuario);
-          const userResponse = await fetch(`/api/auth/user-by-telefono/${usuario}`);
+          const userResponse = await fetch(`${config.API_URL}/api/auth/user-by-telefono/${usuario}`);
           if (userResponse.ok) {
             const userData = await userResponse.json();
             if (userData.success && userData.user && (userData.user.id || userData.user._id)) {
@@ -88,7 +89,7 @@ const Notifications = ({ usuario }) => {
           // Primero obtener las suscripciones activas del usuario
           let activeSubscriptionTypes = [];
           try {
-            const subsResponse = await fetch(`/api/subscriptions/${userId}?activeOnly=true`);
+            const subsResponse = await fetch(`${config.API_URL}/api/subscriptions/${userId}?activeOnly=true`);
             if (subsResponse.ok) {
               const subsData = await subsResponse.json();
               if (subsData.success && subsData.subscriptions) {
@@ -102,7 +103,7 @@ const Notifications = ({ usuario }) => {
           }
           
           // Cargar notificaciones del servidor
-          const response = await fetch(`/api/notifications/${userId}?limit=50`);
+          const response = await fetch(`${config.API_URL}/api/notifications/${userId}?limit=50`);
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.notifications) {
@@ -228,7 +229,7 @@ const Notifications = ({ usuario }) => {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
 
-      await fetch('/api/subscribe', {
+      await fetch(`${config.API_URL}/api/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(subscription.toJSON())

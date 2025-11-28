@@ -5,6 +5,7 @@ import {
   getActiveSubscriptions
 } from '../utils/pushNotifications';
 import './AdminNotifications.css';
+import config from '../config';
 
 const AdminNotifications = ({ usuario, isAdmin }) => {
   const [subscriptionStats, setSubscriptionStats] = useState([]);
@@ -48,7 +49,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
   const loadStats = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/notifications/admin/subscription-stats?adminTelefono=${usuario}`);
+      const response = await fetch(`${config.API_URL}/api/notifications/admin/subscription-stats?adminTelefono=${usuario}`);
       if (response.ok) {
         const data = await response.json();
         setSubscriptionStats(data.stats || []);
@@ -69,7 +70,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
       // Si hay userId, priorizar datos del servidor
       if (userId) {
         try {
-          const response = await fetch(`/api/subscriptions/${userId}?activeOnly=true`);
+          const response = await fetch(`${config.API_URL}/api/subscriptions/${userId}?activeOnly=true`);
           if (response.ok) {
             const data = await response.json();
             console.log('[AdminNotifications - loadSubscriptions] Respuesta del servidor:', data);
@@ -231,7 +232,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
       console.log(`📤 Enviando suscripción al servidor para tipo: ${normalizedType} (original: ${type}), userId: ${userId}`);
 
       // Enviar al servidor con tipo y userId
-      const response = await fetch('/api/subscribe', {
+      const response = await fetch(`${config.API_URL}/api/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -308,7 +309,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
       try {
         console.log(`📥 Obteniendo TODAS las suscripciones del servidor para userId: ${userId}`);
         // Obtener todas las suscripciones (activas e inactivas) para poder desactivar
-        const response = await fetch(`/api/subscriptions/${userId}?activeOnly=false`);
+        const response = await fetch(`${config.API_URL}/api/subscriptions/${userId}?activeOnly=false`);
         if (response.ok) {
           const data = await response.json();
           console.log('Todas las suscripciones del servidor:', data);
@@ -366,7 +367,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
       console.log(`📤 Desactivando suscripción en el servidor: endpoint=${endpoint}, type=${normalizedType} (original: ${type})`);
       
       // Desactivar en el servidor
-      const response = await fetch('/api/unsubscribe', {
+      const response = await fetch(`${config.API_URL}/api/unsubscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -449,7 +450,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
         }
         
         // Cargar notificaciones del servidor
-        const response = await fetch(`/api/notifications/${userId}?limit=50`);
+        const response = await fetch(`${config.API_URL}/api/notifications/${userId}?limit=50`);
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.notifications) {
@@ -506,7 +507,7 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
     setMessage('');
 
     try {
-      const response = await fetch('/api/notifications/admin/send-by-subscription-type', {
+      const response = await fetch(`${config.API_URL}/api/notifications/admin/send-by-subscription-type`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

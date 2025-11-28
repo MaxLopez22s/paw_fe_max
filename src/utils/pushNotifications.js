@@ -1,5 +1,6 @@
 // Utilidad para gestionar notificaciones push personalizadas
 import { saveSubscription, getSubscriptions, deactivateSubscription } from '../idb';
+import config from '../config';
 
 const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
 
@@ -96,7 +97,7 @@ export const unsubscribeFromNotificationType = async (type) => {
       
       // Notificar al servidor
       try {
-        const response = await fetch('/api/unsubscribe', {
+        const response = await fetch(`${config.API_URL}/api/unsubscribe`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -132,10 +133,10 @@ export const getSubscriptionsByType = async (type) => {
 };
 
 // Enviar suscripción al servidor
-const sendSubscriptionToServer = async (subscription, type, config) => {
+const sendSubscriptionToServer = async (subscription, type, configData) => {
   try {
     const userId = localStorage.getItem('userId');
-    const response = await fetch('/api/subscribe', {
+    const response = await fetch(`${config.API_URL}/api/subscribe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -143,7 +144,7 @@ const sendSubscriptionToServer = async (subscription, type, config) => {
       body: JSON.stringify({
         subscription: subscription.toJSON ? subscription.toJSON() : subscription,
         type,
-        config,
+        config: configData,
         userId
       })
     });

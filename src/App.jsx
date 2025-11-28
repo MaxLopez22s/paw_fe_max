@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./styles/login.css";
 import Login from "./login.jsx"; // Importa el componente Login separado
 import Dashboard from "./components/Dashboard"; // Importa el nuevo Dashboard
+import config from "./config";
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -38,7 +39,7 @@ const App = () => {
       
       // Si no hay userId pero hay usuario, intentar obtenerlo del servidor
       if (!savedUserId && savedUsuario) {
-        fetch(`${API_URL}/api/auth/user-by-telefono/${savedUsuario}`)
+        fetch(`${config.API_URL}/api/auth/user-by-telefono/${savedUsuario}`)
           .then(res => {
             if (res.ok) {
               return res.json();
