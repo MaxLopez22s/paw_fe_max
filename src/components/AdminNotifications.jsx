@@ -543,25 +543,53 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
         const sent = result.sent || 0;
         const failed = result.failed || 0;
         const total = result.total || (sent + failed);
-        setMessage(`✅ Notificación enviada: ${sent} exitosas, ${failed} fallidas de ${total} total`);
         
-        // Limpiar formulario
-        setNotificationForm({
-          subscriptionType: 'default',
-          title: '',
-          body: '',
-          icon: '/icons/ico1.ico',
-          url: '/',
-          requireInteraction: false,
-          vibrate: [200, 100, 200],
-          priority: 'normal'
-        });
+        // Mensaje más detallado
+        let message = `✅ Notificación enviada: ${sent} exitosas, ${failed} fallidas de ${total} total`;
+        
+        // Si hay fallos, mostrar detalles de los errores
+        if (failed > 0 && result.results && result.results.length > 0) {
+          const failedResults = result.results.filter(r => !r.success);
+          const errorMessages = failedResults.map(r => {
+            if (r.invalidSubscription) {
+              return 'Suscripción inválida o expirada';
+            }
+            return r.error || 'Error desconocido';
+          });
+          
+          const uniqueErrors = [...new Set(errorMessages)];
+          if (uniqueErrors.length > 0) {
+            message += `\n\n⚠️ Errores: ${uniqueErrors.join(', ')}`;
+          }
+          
+          // Si hay suscripciones inválidas, sugerir recargar
+          const hasInvalidSubs = failedResults.some(r => r.invalidSubscription);
+          if (hasInvalidSubs) {
+            message += '\n💡 Las suscripciones inválidas fueron desactivadas automáticamente.';
+          }
+        }
+        
+        setMessage(message);
+        
+        // Limpiar formulario solo si todo fue exitoso
+        if (failed === 0) {
+          setNotificationForm({
+            subscriptionType: 'default',
+            title: '',
+            body: '',
+            icon: '/icons/ico1.ico',
+            url: '/',
+            requireInteraction: false,
+            vibrate: [200, 100, 200],
+            priority: 'normal'
+          });
+        }
 
         // Recargar estadísticas y notificaciones
         await loadStats();
         await loadNotificationHistory();
       } else {
-        setMessage(`❌ Error: ${result.message}`);
+        setMessage(`❌ Error: ${result.message || 'Error desconocido'}`);
       }
     } catch (error) {
       // Verificar si es un error de conexión
