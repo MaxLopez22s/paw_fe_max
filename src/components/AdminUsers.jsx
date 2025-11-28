@@ -75,13 +75,15 @@ const AdminUsers = ({ usuario, isAdmin }) => {
     } catch (error) {
       // Verificar si es un error de conexión
       const errorMessage = error.message || '';
+      const errorName = error.name || '';
       const isConnectionError = 
         errorMessage.includes('Sin conexión') || 
         errorMessage.includes('sincronización') ||
         errorMessage.includes('Failed to fetch') ||
         errorMessage.includes('NetworkError') ||
+        errorName === 'TypeError' ||
         !navigator.onLine ||
-        (error instanceof TypeError && error.message.includes('fetch'));
+        (error instanceof TypeError);
       
       if (isConnectionError) {
         console.log('⚠️ Sin conexión. Usuario guardado en IndexedDB para sincronización.');

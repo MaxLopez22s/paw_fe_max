@@ -313,7 +313,11 @@ self.addEventListener('sync', async (event) => {
           for (const record of allRecords) {
             try {
               // Usar la URL y método del registro guardado
-              const url = record.url || '/api/datos';
+              // Normalizar URL: si es relativa, convertir a absoluta
+              let url = record.url || '/api/datos';
+              if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = `${API_URL}${url.startsWith('/') ? url : '/' + url}`;
+              }
               const method = record.method || 'POST';
               const headers = record.headers || { 'Content-Type': 'application/json' };
               const body = record.body || record;
