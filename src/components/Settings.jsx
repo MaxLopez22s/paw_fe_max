@@ -213,7 +213,7 @@ const Settings = ({ usuario }) => {
         console.log('✅ Nueva suscripción creada');
       }
 
-      const config = NOTIFICATION_CONFIGS[type] || NOTIFICATION_CONFIGS[NOTIFICATION_TYPES.DEFAULT];
+      const notificationConfig = NOTIFICATION_CONFIGS[type] || NOTIFICATION_CONFIGS[NOTIFICATION_TYPES.DEFAULT];
       let userId = localStorage.getItem('userId');
       const usuario = localStorage.getItem('usuario');
 
@@ -240,7 +240,7 @@ const Settings = ({ usuario }) => {
         console.warn('⚠️ No hay userId disponible, guardando solo en IndexedDB');
         try {
           const { saveSubscription } = await import('../idb');
-          await saveSubscription(subscription, type, config);
+          await saveSubscription(subscription, type, notificationConfig);
           console.log('✅ Guardado en IndexedDB (sin userId)');
           setSaveStatus(`⚠️ Suscrito localmente a ${type}. Inicia sesión nuevamente para sincronizar con el servidor.`);
           setTimeout(() => setSaveStatus(''), 5000);
@@ -261,7 +261,7 @@ const Settings = ({ usuario }) => {
         body: JSON.stringify({
           subscription: subscription.toJSON(),
           type,
-          config,
+          config: notificationConfig,
           userId
         })
       });
@@ -278,7 +278,7 @@ const Settings = ({ usuario }) => {
       // Guardar en IndexedDB
       try {
         const { saveSubscription } = await import('../idb');
-        await saveSubscription(subscription, type, config);
+        await saveSubscription(subscription, type, notificationConfig);
         console.log('✅ Guardado en IndexedDB');
       } catch (idbError) {
         console.warn('⚠️ Error guardando en IndexedDB:', idbError);
