@@ -310,6 +310,30 @@ const deletePending = (db, id) => {
   });
 };
 
+// Función helper para actualizar URL de registro antiguo a absoluta
+const updateRecordUrl = async (db, record) => {
+  if (record.url && !record.url.startsWith('http://') && !record.url.startsWith('https://')) {
+    const fullUrl = `${API_URL}${record.url.startsWith('/') ? record.url : '/' + record.url}`;
+    
+    // Actualizar el registro con URL absoluta
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('pending', 'readwrite');
+      const store = tx.objectStore('pending');
+      const request = store.put({
+        ...record,
+        url: fullUrl
+      });
+      
+      request.onsuccess = () => {
+        console.log(`🔄 Registro ${record.id} actualizado: ${record.url} → ${fullUrl}`);
+        resolve({ ...record, url: fullUrl });
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+  return record;
+};
+
 self.addEventListener('sync', async (event) => {
   if (event.tag === 'sync-posts') {
     console.log('Background Sync activado para sync-posts');
@@ -324,15 +348,16 @@ self.addEventListener('sync', async (event) => {
 
           for (const record of allRecords) {
             try {
-              // Usar la URL y método del registro guardado
-              // Normalizar URL: si es relativa, convertir a absoluta
-              let url = record.url || '/api/datos';
-              if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = `${API_URL}${url.startsWith('/') ? url : '/' + url}`;
-              }
-              const method = record.method || 'POST';
-              const headers = record.headers || { 'Content-Type': 'application/json' };
-              const body = record.body || record;
+              // Actualizar URL si es relativa (migración de registros antiguos)
+              const updatedRecord = await updateRecordUrl(db, record);
+              
+              // Usar la URL normalizada
+              const url = updatedRecord.url || `${API_URL}/api/datos`;
+              const method = updatedRecord.method || 'POST';
+              const headers = updatedRecord.headers || { 'Content-Type': 'application/json' };
+              const body = updatedRecord.body || updatedRecord;
+
+              console.log(`🔄 Reintentando registro ${updatedRecord.id}: ${method} ${url}`);
 
               const response = await fetch(url, {
                 method: method,
@@ -342,13 +367,14 @@ self.addEventListener('sync', async (event) => {
 
               if (response.ok) {
                 // Eliminar del IndexedDB si se subió correctamente
-                await deletePending(db, record.id);
-                console.log(`Registro ${record.id} sincronizado exitosamente en ${url}`);
+                await deletePending(db, updatedRecord.id);
+                console.log(`✅ Registro ${updatedRecord.id} sincronizado exitosamente en ${url}`);
               } else {
-                console.log(`Registro ${record.id} aún falla (${response.status}), manteniendo en DB`);
+                const errorText = await response.text().catch(() => '');
+                console.log(`❌ Registro ${updatedRecord.id} aún falla (${response.status}) en ${url}: ${errorText.substring(0, 100)}`);
               }
             } catch (err) {
-              console.error(`Error al reenviar registro ${record.id}:`, err);
+              console.error(`❌ Error al reenviar registro ${record.id}:`, err);
               // Mantener el registro en DB para reintentar en la próxima sincronización
             }
           }

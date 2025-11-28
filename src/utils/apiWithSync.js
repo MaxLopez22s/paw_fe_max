@@ -94,11 +94,12 @@ export const fetchWithSync = async (url, options = {}) => {
 const savePendingRequest = async (url, body, headers) => {
   try {
     // Asegurar que la URL sea absoluta
-    const fullUrl = url.startsWith('http://') || url.startsWith('https://') 
-      ? url 
-      : `${config.API_URL}${url.startsWith('/') ? url : '/' + url}`;
+    let fullUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      fullUrl = `${config.API_URL}${url.startsWith('/') ? url : '/' + url}`;
+    }
     
-    // Guardar en IndexedDB
+    // Guardar en IndexedDB con URL absoluta
     const pendingData = {
       url: fullUrl,
       body: typeof body === 'string' ? JSON.parse(body) : body,
@@ -109,7 +110,7 @@ const savePendingRequest = async (url, body, headers) => {
     };
 
     await savePending(pendingData);
-    console.log('Request guardado en IndexedDB para sincronización:', fullUrl);
+    console.log('✅ Request guardado en IndexedDB para sincronización:', fullUrl);
 
     // Registrar tarea de background sync
     if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
