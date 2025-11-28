@@ -129,12 +129,25 @@ if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data.type === 'SW_UPDATED') {
           console.log('Nueva versión del Service Worker disponible');
+          // Si shouldReload es true, limpiar cachés y recargar
+          if (event.data.shouldReload) {
+            // Limpiar cachés antes de recargar
+            if ('caches' in window) {
+              caches.keys().then(names => {
+              names.forEach(name => {
+                if (!name.includes('v1.8')) { // Mantener solo las cachés actuales
+                  caches.delete(name);
+                }
+              });
+              });
+            }
+          }
           showUpdateNotification(event.data.message);
         }
         
         if (event.data.type === 'RELOAD_PAGE') {
           console.log('Recargando página por actualización del Service Worker');
-          window.location.reload();
+          window.location.reload(true); // Forzar recarga desde servidor
         }
       });
 
@@ -221,7 +234,24 @@ const showUpdateNotification = (message) => {
     document.body.removeChild(notification);
   };
 
-  document.getElementById('update-now').onclick = () => {
+  document.getElementById('update-now').onclick = async () => {
+    // Limpiar cachés antes de actualizar
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames.map(name => {
+            if (!name.includes('v1.8')) { // Mantener solo las cachés actuales
+              return caches.delete(name);
+            }
+          })
+        );
+        console.log('Cachés limpiadas antes de actualizar');
+      } catch (error) {
+        console.error('Error limpiando cachés:', error);
+      }
+    }
+    
     if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage('updateAndReload');
     }

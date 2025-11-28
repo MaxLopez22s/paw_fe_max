@@ -575,21 +575,47 @@ const Settings = ({ usuario }) => {
     }
   };
 
-  const clearCache = () => {
-    if (confirm('¿Estás seguro de que quieres limpiar la caché? Esto puede afectar el rendimiento.')) {
-      if ('caches' in window) {
-        caches.keys().then(names => {
-          names.forEach(name => {
-            caches.delete(name);
-          });
-        });
+  const clearCache = async () => {
+    if (confirm('¿Estás seguro de que quieres limpiar la caché? Esto forzará la recarga de todos los recursos.')) {
+      try {
+        setSaveStatus('🔄 Limpiando caché...');
+        
+        // Limpiar todas las cachés del navegador
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(
+            cacheNames.map(name => {
+              console.log('Eliminando caché:', name);
+              return caches.delete(name);
+            })
+          );
+          console.log(`✅ ${cacheNames.length} cachés eliminadas`);
+        }
+        
+        // Limpiar localStorage específico (opcional - mantener datos del usuario)
+        // localStorage.removeItem('notificationHistory');
+        
+        // Limpiar sessionStorage
+        sessionStorage.clear();
+        
+        // Forzar actualización del Service Worker
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration) {
+            await registration.update();
+            console.log('✅ Service Worker actualizado');
+          }
+        }
+        
+        setSaveStatus('✅ Caché limpiada exitosamente. Recargando...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } catch (error) {
+        console.error('Error limpiando caché:', error);
+        setSaveStatus('❌ Error al limpiar caché');
+        setTimeout(() => setSaveStatus(''), 3000);
       }
-      
-      // Limpiar localStorage específico
-      localStorage.removeItem('notificationHistory');
-      
-      setSaveStatus('🗑️ Caché limpiada exitosamente');
-      setTimeout(() => setSaveStatus(''), 3000);
     }
   };
 

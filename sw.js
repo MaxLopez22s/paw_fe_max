@@ -1,7 +1,7 @@
 // sw.js - Versión mejorada con mejor manejo de cache, offline y notificaciones personalizadas
-const APP_SHELL = "appShell_v1.7"; // Actualizado a v1.7 (Suscripciones múltiples y notificaciones mejoradas)
-const DYNAMIC_CACHE = "dynamic_v1.7"; // Actualizado a v1.7
-const API_CACHE = "apiCache_v1.7"; // Cache específico para API
+const APP_SHELL = "appShell_v1.8"; // Actualizado a v1.8 (Limpieza automática de caché)
+const DYNAMIC_CACHE = "dynamic_v1.8"; // Actualizado a v1.8
+const API_CACHE = "apiCache_v1.8"; // Cache específico para API
 const API_URL = 'https://pwa-be-max.onrender.com'; // URL del backend
 
 // Archivos del App Shell
@@ -55,7 +55,7 @@ self.addEventListener("activate", event => {
   console.log('Service Worker activando...');
   event.waitUntil(
     Promise.all([
-      // Limpiar caches viejas
+      // Limpiar TODAS las caches viejas (excepto las actuales)
       caches.keys().then(keys => {
         return Promise.all(
           keys.map(key => {
@@ -65,16 +65,28 @@ self.addEventListener("activate", event => {
             }
           })
         );
+      }),
+      // Limpiar cachés que puedan tener archivos corruptos o versiones viejas
+      // Forzar recarga del App Shell si hay actualización
+      caches.open(APP_SHELL).then(cache => {
+        return cache.keys().then(keys => {
+          // Si hay muchos archivos o si detectamos que necesita actualización, limpiar
+          console.log(`App Shell cache: ${keys.length} archivos`);
+          // No eliminar, solo loguear - los archivos se actualizarán automáticamente
+        });
       })
-      // NO usar self.clients.claim() para evitar tomar control inmediato
     ]).then(() => {
-      console.log('Service Worker activado y listo');
+      console.log('Service Worker activado y listo - Cachés limpiadas');
+      // Tomar control inmediatamente para forzar actualización
+      return self.clients.claim();
+    }).then(() => {
       // Notificar a las pestañas que hay una nueva versión disponible
       self.clients.matchAll().then(clients => {
         clients.forEach(client => {
           client.postMessage({
             type: 'SW_UPDATED',
-            message: 'Nueva versión disponible. Recarga la página para ver los cambios.'
+            message: 'Nueva versión disponible. Recarga la página para ver los cambios.',
+            shouldReload: true
           });
         });
       });
