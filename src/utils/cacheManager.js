@@ -112,11 +112,69 @@ export const clearCacheAndReload = async () => {
   }
 };
 
+/**
+ * Limpia todas las cachés sin recargar la página
+ * Útil cuando solo quieres limpiar sin forzar recarga
+ */
+export const clearCacheWithoutReload = async () => {
+  try {
+    await clearAllCaches();
+    // Limpiar sessionStorage también
+    sessionStorage.clear();
+    
+    // Forzar actualización del Service Worker
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        await registration.update();
+      }
+    }
+    
+    console.log('✅ Caché limpiada (sin recargar página)');
+    return { success: true, message: 'Caché limpiada exitosamente' };
+  } catch (error) {
+    console.error('Error en clearCacheWithoutReload:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Limpia caché del Service Worker desde el código del SW
+ * Se puede llamar desde el Service Worker para limpiar sus propias cachés
+ */
+export const clearServiceWorkerCaches = async () => {
+  try {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      // Enviar mensaje al Service Worker para que limpie sus cachés
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CLEAR_ALL_CACHES'
+      });
+      return { success: true, message: 'Solicitud de limpieza enviada al Service Worker' };
+    }
+    return { success: false, error: 'Service Worker no disponible' };
+  } catch (error) {
+    console.error('Error enviando mensaje al Service Worker:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Ejecutar limpieza automática al cargar el módulo (solo en cliente)
 if (typeof window !== 'undefined') {
   // Limpiar cachés viejas después de un pequeño delay
   setTimeout(() => {
     autoCleanCache();
   }, 1000);
+
+  // Exponer funciones globales para uso desde consola o código
+  window.clearAppCache = clearCacheWithoutReload;
+  window.clearAppCacheAndReload = clearCacheAndReload;
+  window.clearOldCaches = cleanOldCaches;
+  window.clearServiceWorkerCache = clearServiceWorkerCaches;
+  
+  console.log('💾 Funciones de caché disponibles globalmente:');
+  console.log('  - window.clearAppCache() - Limpia caché sin recargar');
+  console.log('  - window.clearAppCacheAndReload() - Limpia caché y recarga');
+  console.log('  - window.clearOldCaches() - Limpia solo cachés viejas');
+  console.log('  - window.clearServiceWorkerCache() - Solicita limpieza al SW');
 }
 
