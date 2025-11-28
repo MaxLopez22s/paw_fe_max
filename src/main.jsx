@@ -26,6 +26,7 @@ const urlBase64ToUint8Array = (base64String) => {
 // Importar funciones de IndexedDB
 import { saveSubscription, getSubscriptions } from './idb';
 import { postWithSync } from './utils/apiWithSync';
+import { autoCleanCache } from './utils/cacheManager';
 
 // Función para suscribirse a notificaciones push con tipo personalizado
 const subscribeToPush = async (registration, type = 'default', configData = {}) => {
@@ -109,6 +110,13 @@ const requestNotificationPermission = async () => {
   return permission === 'granted';
 };
 
+// Limpieza automática de caché al iniciar
+autoCleanCache().then(cleaned => {
+  if (cleaned) {
+    console.log('✅ Cachés viejas limpiadas automáticamente');
+  }
+});
+
 // Registro del Service Worker con manejo de notificaciones push
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker
@@ -135,7 +143,7 @@ if ('serviceWorker' in navigator) {
             if ('caches' in window) {
               caches.keys().then(names => {
               names.forEach(name => {
-                if (!name.includes('v1.9')) { // Mantener solo las cachés actuales
+                if (!name.includes('v2.0')) { // Mantener solo las cachés actuales
                   caches.delete(name);
                 }
               });
@@ -240,11 +248,11 @@ const showUpdateNotification = (message) => {
       try {
         const cacheNames = await caches.keys();
         await Promise.all(
-          cacheNames.map(name => {
-            if (!name.includes('v1.9')) { // Mantener solo las cachés actuales
-              return caches.delete(name);
-            }
-          })
+        cacheNames.map(name => {
+          if (!name.includes('v2.0')) { // Mantener solo las cachés actuales
+            return caches.delete(name);
+          }
+        })
         );
         console.log('Cachés limpiadas antes de actualizar');
       } catch (error) {

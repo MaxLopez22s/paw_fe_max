@@ -1,7 +1,7 @@
 // sw.js - Versión mejorada con mejor manejo de cache, offline y notificaciones personalizadas
-const APP_SHELL = "appShell_v1.9"; // Actualizado a v1.9 (Sincronización automática cuando vuelve conexión)
-const DYNAMIC_CACHE = "dynamic_v1.9"; // Actualizado a v1.9
-const API_CACHE = "apiCache_v1.9"; // Cache específico para API
+const APP_SHELL = "appShell_v2.0"; // Actualizado a v2.0 (Limpieza automática de caché mejorada)
+const DYNAMIC_CACHE = "dynamic_v2.0"; // Actualizado a v2.0
+const API_CACHE = "apiCache_v2.0"; // Cache específico para API
 const API_URL = 'https://pwa-be-max.onrender.com'; // URL del backend
 
 // Archivos del App Shell
@@ -57,26 +57,37 @@ self.addEventListener("activate", event => {
     Promise.all([
       // Limpiar TODAS las caches viejas (excepto las actuales)
       caches.keys().then(keys => {
-        return Promise.all(
-          keys.map(key => {
-            if (key !== APP_SHELL && key !== DYNAMIC_CACHE && key !== API_CACHE) {
-              console.log('Eliminando cache vieja:', key);
-              return caches.delete(key);
-            }
-          })
+        const oldCaches = keys.filter(key => 
+          key !== APP_SHELL && key !== DYNAMIC_CACHE && key !== API_CACHE
         );
+        
+        if (oldCaches.length > 0) {
+          console.log(`🗑️ Eliminando ${oldCaches.length} cachés viejas:`, oldCaches);
+          return Promise.all(oldCaches.map(key => caches.delete(key)));
+        } else {
+          console.log('✅ No hay cachés viejas que limpiar');
+          return Promise.resolve([]);
+        }
       }),
-      // Limpiar cachés que puedan tener archivos corruptos o versiones viejas
-      // Forzar recarga del App Shell si hay actualización
+      // Limpiar cachés que puedan tener archivos corruptos
       caches.open(APP_SHELL).then(cache => {
         return cache.keys().then(keys => {
-          // Si hay muchos archivos o si detectamos que necesita actualización, limpiar
-          console.log(`App Shell cache: ${keys.length} archivos`);
-          // No eliminar, solo loguear - los archivos se actualizarán automáticamente
+          console.log(`📦 App Shell cache: ${keys.length} archivos`);
+          // Validar que los archivos existan y sean válidos
+          return Promise.all(
+            keys.map(async request => {
+              const response = await cache.match(request);
+              if (!response || !response.ok) {
+                console.log(`⚠️ Archivo inválido en caché, eliminando: ${request.url}`);
+                return cache.delete(request);
+              }
+              return Promise.resolve();
+            })
+          );
         });
       })
     ]).then(() => {
-      console.log('Service Worker activado y listo - Cachés limpiadas');
+      console.log('✅ Service Worker activado y listo - Cachés limpiadas');
       // Tomar control inmediatamente para forzar actualización
       return self.clients.claim();
     }).then(() => {
