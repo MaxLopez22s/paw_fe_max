@@ -253,27 +253,60 @@ const Settings = ({ usuario }) => {
       }
 
       console.log(`📤 Enviando suscripción al servidor para tipo: ${type}, userId: ${userId}`);
+      console.log(`📤 URL del servidor: ${config.API_URL}/api/subscribe`);
 
       // Enviar al servidor con tipo y userId
-      const response = await fetch(`${config.API_URL}/api/subscribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subscription: subscription.toJSON(),
-          type,
-          config: notificationConfig,
-          userId
-        })
-      });
-
-      const responseData = await response.json().catch(() => ({}));
+      let response;
+      let responseData = {};
       
-      if (!response.ok) {
-        console.error('Error del servidor:', responseData);
-        throw new Error(responseData.message || `Error del servidor: ${response.status}`);
-      }
+      try {
+        // Crear un AbortController para timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
+        
+        console.log(`📤 Iniciando fetch a: ${config.API_URL}/api/subscribe`);
+        
+        response = await fetch(`${config.API_URL}/api/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            type,
+            config: notificationConfig,
+            userId
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        console.log(`📥 Respuesta recibida, status: ${response.status}`);
+        
+        try {
+          responseData = await response.json();
+        } catch (jsonError) {
+          console.error('Error parseando JSON de respuesta:', jsonError);
+          const text = await response.text();
+          console.error('Respuesta como texto:', text);
+          throw new Error(`Error en respuesta del servidor: ${response.status} - ${text.substring(0, 100)}`);
+        }
+        
+        if (!response.ok) {
+          console.error('Error del servidor:', responseData);
+          throw new Error(responseData.message || `Error del servidor: ${response.status}`);
+        }
 
-      console.log('✅ Respuesta del servidor:', responseData);
+        console.log('✅ Respuesta del servidor:', responseData);
+      } catch (fetchError) {
+        console.error('❌ Error en fetch:', fetchError);
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Tiempo de espera agotado. El servidor no respondió en 10 segundos.');
+        }
+        if (fetchError.message) {
+          throw fetchError;
+        }
+        throw new Error(`Error de conexión: ${fetchError.message || 'No se pudo conectar al servidor. Verifica que el backend esté funcionando.'}`);
+      }
 
       // Guardar en IndexedDB
       try {
@@ -298,9 +331,12 @@ const Settings = ({ usuario }) => {
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (error) {
       console.error('❌ Error suscribiéndose:', error);
-      setSaveStatus(`❌ Error: ${error.message || 'Error al suscribirse'}`);
-      setTimeout(() => setSaveStatus(''), 5000);
+      console.error('❌ Stack trace:', error.stack);
+      const errorMessage = error.message || 'Error al suscribirse';
+      setSaveStatus(`❌ Error: ${errorMessage}`);
+      setTimeout(() => setSaveStatus(''), 8000);
     } finally {
+      console.log('🔄 Finalizando suscripción, reseteando loading...');
       setLoadingSubs(false);
     }
   };
