@@ -71,3 +71,4 @@ export const createSyncEvent = (data) => {
   return new CustomEvent('syncCompleted', { detail: data });
 };
 
+

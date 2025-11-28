@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NOTIFICATION_TYPES, NOTIFICATION_CONFIGS } from '../utils/pushNotifications';
+import { NOTIFICATION_TYPES, NOTIFICATION_CONFIGS, getActiveSubscriptions } from '../utils/pushNotifications';
 import { postWithSync } from '../utils/apiWithSync';
 import './AdminNotifications.css';
 import config from '../config';
@@ -55,10 +55,12 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
     };
   }, [isAdmin]);
 
-  // Debug: Log cuando cambie activeSubscriptions
+  // Debug: Log cuando cambie activeSubscriptions (solo cantidad para evitar logs excesivos)
   useEffect(() => {
-    console.log('[AdminNotifications] activeSubscriptions actualizado:', activeSubscriptions);
-  }, [activeSubscriptions]);
+    if (activeSubscriptions.length > 0) {
+      console.log('[AdminNotifications] activeSubscriptions:', activeSubscriptions.length, 'suscripciones activas');
+    }
+  }, [activeSubscriptions.length]);
 
   const loadStats = async () => {
     setLoading(true);
@@ -852,24 +854,8 @@ const AdminNotifications = ({ usuario, isAdmin }) => {
             );
             const config = NOTIFICATION_CONFIGS[type];
             
-            // Log para debug - más detallado
-            console.log(`[AdminNotifications] Tipo ${type} (buscando):`, {
-              totalSubs: activeSubscriptions.length,
-              matchingSubs: matchingSubs.length,
-              isSubscribed,
-              subsDetails: matchingSubs.map(s => ({ 
-                id: s.id, 
-                type: s.type, 
-                active: s.active 
-              })),
-              allSubsTypes: activeSubscriptions.map(s => ({ 
-                type: s.type, 
-                typeValue: typeof s.type,
-                active: s.active 
-              })),
-              searchingFor: type,
-              searchingForType: typeof type
-            });
+            // Log reducido para evitar logs excesivos (comentado para producción)
+            // console.log(`[AdminNotifications] Tipo ${type}: ${isSubscribed ? 'suscrito' : 'no suscrito'}`);
             
             return (
               <div 

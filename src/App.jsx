@@ -150,13 +150,17 @@ const App = () => {
     // Escuchar evento online
     window.addEventListener('online', handleOnline);
 
-    // Verificar si ya hay conexión al cargar
+    // Verificar si ya hay conexión al cargar (con un pequeño delay para evitar ejecuciones múltiples)
+    let checkTimeout;
     if (navigator.onLine) {
-      handleOnline();
+      checkTimeout = setTimeout(() => {
+        handleOnline();
+      }, 1000);
     }
 
     return () => {
       window.removeEventListener('online', handleOnline);
+      if (checkTimeout) clearTimeout(checkTimeout);
     };
   }, []);
 
