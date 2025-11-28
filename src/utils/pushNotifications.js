@@ -1,9 +1,6 @@
 // Utilidad para gestionar notificaciones push personalizadas
 import { saveSubscription, getSubscriptions, deactivateSubscription } from '../idb';
-<<<<<<< HEAD
 import config from '../config';
-=======
->>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
 
 const VAPID_PUBLIC_KEY = 'BLbz7pe2pc9pZnoILf5q43dkshGp9Z-UA6lKpkZtqVaFyasrLTTrJjeNbFFCOBCGtB2KtWRIO8c04O2dXAhwdvA';
 
@@ -44,7 +41,7 @@ export const requestNotificationPermission = async () => {
 };
 
 // Suscribirse a un tipo específico de notificación
-export const subscribeToNotificationType = async (type, config = {}) => {
+export const subscribeToNotificationType = async (type, configData = {}) => {
   try {
     if (!('serviceWorker' in navigator) || !('pushManager' in navigator.serviceWorker.registration)) {
       throw new Error('Service Worker o Push Manager no disponible');
@@ -65,10 +62,10 @@ export const subscribeToNotificationType = async (type, config = {}) => {
     });
 
     // Guardar en IndexedDB
-    await saveSubscription(subscription, type, config);
+    await saveSubscription(subscription, type, configData);
 
     // Enviar al servidor
-    await sendSubscriptionToServer(subscription, type, config);
+    await sendSubscriptionToServer(subscription, type, configData);
 
     return subscription;
   } catch (error) {
@@ -81,10 +78,7 @@ export const subscribeToNotificationType = async (type, config = {}) => {
 export const unsubscribeFromNotificationType = async (type) => {
   try {
     const subscriptions = await getSubscriptions(type, true);
-<<<<<<< HEAD
     const userId = localStorage.getItem('userId');
-=======
->>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
     
     for (const sub of subscriptions) {
       // Desactivar en IndexedDB
@@ -103,16 +97,11 @@ export const unsubscribeFromNotificationType = async (type) => {
       
       // Notificar al servidor
       try {
-<<<<<<< HEAD
         const response = await fetch(`${config.API_URL}/api/unsubscribe`, {
-=======
-        await fetch('/api/unsubscribe', {
->>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             endpoint: sub.subscription.endpoint,
-<<<<<<< HEAD
             type,
             userId
           })
@@ -121,11 +110,6 @@ export const unsubscribeFromNotificationType = async (type) => {
         if (!response.ok) {
           console.error('Error en respuesta del servidor al desuscribirse');
         }
-=======
-            type 
-          })
-        });
->>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       } catch (error) {
         console.error('Error notificando al servidor:', error);
       }
@@ -149,16 +133,10 @@ export const getSubscriptionsByType = async (type) => {
 };
 
 // Enviar suscripción al servidor
-<<<<<<< HEAD
 const sendSubscriptionToServer = async (subscription, type, configData) => {
   try {
     const userId = localStorage.getItem('userId');
     const response = await fetch(`${config.API_URL}/api/subscribe`, {
-=======
-const sendSubscriptionToServer = async (subscription, type, config) => {
-  try {
-    const response = await fetch('/api/subscribe', {
->>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -166,12 +144,8 @@ const sendSubscriptionToServer = async (subscription, type, config) => {
       body: JSON.stringify({
         subscription: subscription.toJSON ? subscription.toJSON() : subscription,
         type,
-<<<<<<< HEAD
         config: configData,
         userId
-=======
-        config
->>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
       })
     });
 
@@ -229,9 +203,3 @@ export const NOTIFICATION_CONFIGS = {
     requireInteraction: false
   }
 };
-
-<<<<<<< HEAD
-=======
-
-
->>>>>>> bb931a92cce45860a90493e824c36613198ef7bf
