@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NOTIFICATION_TYPES } from '../utils/pushNotifications';
+import { NOTIFICATION_TYPES, NOTIFICATION_CONFIGS } from '../utils/pushNotifications';
 import { postWithSync } from '../utils/apiWithSync';
 import './AdminNotifications.css';
 import config from '../config';
